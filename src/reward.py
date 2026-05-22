@@ -1,122 +1,141 @@
-import numpy as np
+"""
+Reward function for the RallyDrivingEnv.
+
+Goals:
+    + Reward forward progress toward the next checkpoint
+    + Reward reaching checkpoints
+    - Penalise standing still (step penalty)
+    - Penalise hitting obstacles
+    - Penalise out-of-bounds
+    - Penalise sudden orientation changes (roll, pitch, yaw)
+    - Penalise driving close to obstacles (repulsive field)
+    +/- Reward or penalise landing big jumps depending on weight signs
+
+The function is exposed both as a class (cleaner for tests / per-instance state)
+and as a module-level `custom_reward` callable for backwards compatibility with
+`SimpleDrivingEnv`'s callback interface.
+"""
+
+import math
+
+
+class RewardConfig:
+    """All tunable weights and thresholds in one place."""
+
+    # ── Major events ───────────────────────────────────────────────────
+    GOAL_REWARD       = 100.0    # reaching a checkpoint
+    OBSTACLE_PENALTY  = -100.0   # close-contact with an obstacle
+    OUT_OF_BOUNDS     = -50.0
+    WORLD_BOUNDARY    =  30.0    # half-extent of the play area
+
+    # ── Per-step shaping ───────────────────────────────────────────────
+    STEP_PENALTY        =  -0.5
+    PROGRESS_SCALE      =   3.0    # multiplier on (prev_dist - dist)
+    REGRESSION_PENALTY  =  -5.0    # extra penalty when moving away from goal
+
+    # ── Smooth driving ─────────────────────────────────────────────────
+    YAW_DELTA_PENALTY    =  -5.0   # per radian of yaw change
+    ROLL_DELTA_PENALTY   = -15.0   # per radian of roll change (chassis tilt)
+    PITCH_DELTA_PENALTY  =  -4.0   # per radian of pitch change
+
+    # ── Obstacle handling ──────────────────────────────────────────────
+    MIN_SAFE_DISTANCE     = 1.0    # closer than this is a "hit"
+    REPULSE_RADIUS        = 2.5    # range of repulsive field
+    REPULSE_SCALE         = 10.0   # strength of repulsive field
+
+    # ── Jump bonus (phase 3) ───────────────────────────────────────────
+    # Positive value => agent is rewarded for getting airborne briefly.
+    # Set to 0.0 or negative to discourage jumping. Triggered by pitch
+    # magnitude exceeding the threshold (i.e. the car launched off a ramp).
+    AIRBORNE_PITCH_THRESHOLD = 0.20   # radians — about 11 degrees
+    AIRBORNE_BONUS           = 1.0    # per step while pitched up
 
 
 class RewardCalculator:
     """
-    Reward function for the oval track racing agent.
-
-    Components:
-        + progress_reward   — SIGNED forward movement (in body frame)
-        + speed_reward      — incentivise going fast
-        - time_penalty      — small per-step cost so standing still bleeds reward
-        - swerve_penalty    — penalise rapid steering changes
-        - wall_proximity    — penalise getting too close to walls
-        - off_track_penalty — large negative if car leaves track
+    Computes per-step reward. Stateless between calls — the env provides
+    all prev_* fields. Just wraps `RewardConfig` to keep the code testable.
     """
 
-    def __init__(self):
-        # Weights — tuned after first run showed agent learned "do nothing"
-        self.w_progress      = 5.0    # was 2.0 — make forward motion dominant
-        self.w_speed         = 0.5
-        self.w_swerve        = 0.3    # was 0.8 — too harsh, agent refused to steer
-        self.w_wall          = 0.3
-        self.w_collision     = 50.0
-        self.w_time          = 0.05   # NEW — constant per-step penalty
+    def __init__(self, config: RewardConfig | None = None):
+        self.cfg = config or RewardConfig()
 
-        # Thresholds
-        self.min_ray_distance  = 0.3
-        self.crash_distance    = 0.05
-        self.max_ray_distance  = 5.0
-
-        # Going backwards is worse than standing still
-        self.reverse_multiplier = 2.0
-
-        self.prev_steering = 0.0
-        self.prev_position = None
-        self.total_reward  = 0.0
-
-    def reset(self):
-        self.prev_steering = 0.0
-        self.prev_position = None
-        self.total_reward  = 0.0
-
-    def compute(
+    def __call__(
         self,
-        rays: np.ndarray,
-        speed: float,
-        steering: float,
-        position: np.ndarray,
-        yaw: float,
-        crashed: bool,
-    ) -> tuple[float, dict]:
+        car_pos, goal_pos, obstacle_pos, has_obstacle,
+        prev_dist_to_goal, dist_to_goal, reached_goal,
+        prev_yaw=0.0, current_yaw=0.0,
+        prev_roll=0.0, current_roll=0.0,
+        prev_pitch=0.0, current_pitch=0.0,
+        obstacle_positions=None, scenario="phase1",
+    ) -> float:
+        cfg = self.cfg
         reward = 0.0
-        info   = {}
 
-        # ── 1. Signed forward progress ──────────────────────────────────
-        if self.prev_position is not None:
-            delta   = position - self.prev_position
-            heading = np.array([np.cos(yaw), np.sin(yaw)], dtype=np.float32)
-            forward = float(np.dot(delta, heading))
+        # ── Progress ────────────────────────────────────────────────────
+        progress = (prev_dist_to_goal - dist_to_goal) if prev_dist_to_goal is not None else 0.0
+        reward += cfg.STEP_PENALTY + cfg.PROGRESS_SCALE * progress
 
-            if forward >= 0.0:
-                progress_r = self.w_progress * forward
-            else:
-                progress_r = self.w_progress * forward * self.reverse_multiplier
-        else:
-            progress_r = 0.0
-        reward += progress_r
-        info["progress"] = progress_r
+        # ── Checkpoint reached ──────────────────────────────────────────
+        if reached_goal:
+            reward += cfg.GOAL_REWARD
 
-        # ── 2. Speed reward ─────────────────────────────────────────────
-        speed_r = self.w_speed * min(speed, 3.0) / 3.0
-        reward += speed_r
-        info["speed"] = speed_r
+        # ── Yaw smoothness ──────────────────────────────────────────────
+        yaw_delta = self._wrap_delta(current_yaw - prev_yaw)
+        reward += cfg.YAW_DELTA_PENALTY * abs(yaw_delta)
 
-        # ── 3. Swerve penalty ───────────────────────────────────────────
-        steering_delta = abs(steering - self.prev_steering)
-        swerve_p = -self.w_swerve * (steering_delta ** 2)
-        reward += swerve_p
-        info["swerve_penalty"] = swerve_p
+        # ── Chassis stability (roll/pitch) ──────────────────────────────
+        roll_delta = self._wrap_delta(current_roll - prev_roll)
+        pitch_delta = self._wrap_delta(current_pitch - prev_pitch)
+        reward += cfg.ROLL_DELTA_PENALTY * abs(roll_delta)
+        reward += cfg.PITCH_DELTA_PENALTY * abs(pitch_delta)
 
-        # ── 4. Wall proximity penalty ───────────────────────────────────
-        min_ray = float(np.min(rays))
-        if min_ray < self.min_ray_distance:
-            wall_p = -self.w_wall * (
-                (self.min_ray_distance - min_ray) / self.min_ray_distance
-            ) ** 2
-        else:
-            wall_p = 0.0
-        reward += wall_p
-        info["wall_proximity"] = wall_p
+        # ── Obstacle hit (single nearest) ───────────────────────────────
+        if has_obstacle and obstacle_pos is not None:
+            dist_to_obs = math.hypot(
+                car_pos[0] - obstacle_pos[0], car_pos[1] - obstacle_pos[1],
+            )
+            if dist_to_obs <= cfg.MIN_SAFE_DISTANCE:
+                reward += cfg.OBSTACLE_PENALTY
+            # Regression: moving away from goal while not actively avoiding
+            if progress < 0 and dist_to_obs > dist_to_goal:
+                reward += cfg.REGRESSION_PENALTY
 
-        # ── 5. Collision penalty ────────────────────────────────────────
-        if crashed:
-            collision_p = -self.w_collision
-            reward += collision_p
-            info["collision"] = collision_p
-        else:
-            info["collision"] = 0.0
+        # ── Obstacle repulsive field (all obstacles) ────────────────────
+        if obstacle_positions:
+            for pos in obstacle_positions:
+                d = math.hypot(car_pos[0] - pos[0], car_pos[1] - pos[1])
+                if d < cfg.REPULSE_RADIUS:
+                    reward -= cfg.REPULSE_SCALE * (cfg.REPULSE_RADIUS - d)
 
-        # ── 6. Time penalty ─────────────────────────────────────────────
-        # Constant per-step cost so the "stand still for 1000 steps" strategy
-        # accrues -50 reward, same magnitude as a crash. Forces the agent to
-        # earn reward by moving rather than passively avoiding penalties.
-        time_p = -self.w_time
-        reward += time_p
-        info["time_penalty"] = time_p
+        # ── Out of bounds ───────────────────────────────────────────────
+        if abs(car_pos[0]) > cfg.WORLD_BOUNDARY or abs(car_pos[1]) > cfg.WORLD_BOUNDARY:
+            reward += cfg.OUT_OF_BOUNDS
 
-        # ── Bookkeeping ─────────────────────────────────────────────────
-        self.prev_steering  = steering
-        self.prev_position  = position.copy()
-        self.total_reward  += reward
+        # ── Airborne bonus (phase 3 jumps) ──────────────────────────────
+        # Brief pitch-up off a ramp => "landed the jump". Only counts if
+        # the agent is actively making progress (don't reward backflipping).
+        if scenario == "phase3" and current_pitch > cfg.AIRBORNE_PITCH_THRESHOLD and progress > 0:
+            reward += cfg.AIRBORNE_BONUS
 
-        info["total_step"]    = reward
-        info["episode_total"] = self.total_reward
+        return reward
 
-        return reward, info
+    @staticmethod
+    def _wrap_delta(delta: float) -> float:
+        """Wrap an angular difference into [-pi, pi]."""
+        if delta > math.pi:
+            return delta - 2 * math.pi
+        if delta < -math.pi:
+            return delta + 2 * math.pi
+        return delta
 
-    def is_crashed(self, rays: np.ndarray) -> bool:
-        return bool(np.any(rays * self.max_ray_distance < self.crash_distance))
 
-    def normalise_rays(self, raw_rays: np.ndarray) -> np.ndarray:
-        return np.clip(raw_rays / self.max_ray_distance, 0.0, 1.0)
+# ── Module-level callable for env.reward_callback ──────────────────────
+# RallyDrivingEnv expects a plain callable; instantiating once at import
+# is the simplest interface.
+
+_default_calculator = RewardCalculator()
+
+
+def custom_reward(**kwargs) -> float:
+    return _default_calculator(**kwargs)

@@ -1,4 +1,3 @@
-cat > .gitignore << 'EOF'
 # ── Training artifacts ───────────────────────────────────────────────
 models/
 !models/.gitkeep
@@ -15,16 +14,19 @@ __pycache__/
 *.so
 .Python
 *.egg-info/
+build/
+dist/
 .pytest_cache/
 .mypy_cache/
+
+# Virtual environments
 venv/
 env/
 .venv/
 
-# ── ROS2 / colcon build outputs ──────────────────────────────────────
-build/
-install/
-log/
+# ── PyBullet / TensorBoard ───────────────────────────────────────────
+ppo_tensorboard/
+events.out.tfevents.*
 
 # ── Editor / IDE ─────────────────────────────────────────────────────
 .vscode/
@@ -36,7 +38,3 @@ log/
 # ── OS junk ──────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
-
-# ── Gazebo runtime ───────────────────────────────────────────────────
-.gazebo/
-EOF

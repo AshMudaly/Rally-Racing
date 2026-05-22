@@ -1,203 +1,194 @@
-# Oval Track Racing: _PPO Reinforcement Learning Agent_
-Bringup for **Oval Track Racing**: a PPO-trained autonomous racing car in Gazebo Classic. A project for *41118 Artificial Intelligence in Robotics*. Launches a differential-drive racing car on a custom oval track world and trains a Proximal Policy Optimization (PPO) agent to lap the track using five ray sensors and odometry. We use **ROS2 Humble**, **Gazebo Classic 11**, and **Stable-Baselines3**.
+# Rally Racing: PPO Rally Car on a Designated Track
 
-The car learns to drive from five ray-sensor distance readings (left, front-left, front, front-right, right) plus its current speed and steering. The reward function balances forward progress, speed, smoothness, wall avoidance, and collision penalties.
+A PPO-trained autonomous rally car for *41118 Artificial Intelligence in Robotics*. The car drives a track defined by a sequence of checkpoints, avoids obstacles, and can optionally take jumps to finish laps faster.
+
+**Stack:** PyBullet (physics) + Gymnasium (RL interface) + Stable-Baselines3 (PPO).
+
+## Project Structure
+```
+Rally-Racing/
+├── simple_driving/                    # Installable Python package
+│   ├── __init__.py                    # Registers Gym environments
+│   ├── envs/
+│   │   ├── simple_driving_env.py      # Base env: single goal, single obstacle
+│   │   └── rally_driving_env.py       # Rally env: checkpoints, obstacles, ramps
+│   └── resources/
+│       ├── car.py                     # Car kinematics + URDF loader
+│       ├── plane.py                   # Ground plane
+│       ├── goal.py                    # Goal/checkpoint marker
+│       ├── obstacle.py                # Static red cylinder
+│       ├── ramp.py                    # Orange ramp for jumps
+│       └── *.urdf                     # PyBullet model files
+├── src/
+│   ├── reward.py                      # Reward function and tunable weights
+│   ├── observation.py                 # Observation callback (base env only)
+│   ├── train.py                       # PPO training
+│   └── test.py                        # Evaluation with rendering
+├── models/                            # Trained weights (gitignored)
+├── logs/                              # TensorBoard logs (gitignored)
+├── setup.py
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
 
 ## Installation
-### Installation: Simulation Basics
-First install some dependencies:
-* If you haven't already, install ROS2 Humble. Follow the instructions here: https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
-* Install Gazebo Classic and ROS bridge packages
-  ```bash
-  sudo apt update
-  sudo apt install ros-humble-gazebo-ros-pkgs ros-humble-gazebo-ros2-control
-  sudo apt install ros-humble-robot-state-publisher ros-humble-xacro
-  ```
-* Install development tools
-  ```bash
-  sudo apt install ros-dev-tools
-  ```
-* Make sure that your installation is up to date. This is particularly important if you installed ROS a long time ago, such as in another subject. If you get errors here, make sure to resolve these before continuing.
-  ```bash
-  sudo apt upgrade
-  sudo apt update
-  ```
+Python 3.10+ required. No ROS or Gazebo.
 
-### Installation: Racing Package
-* Create a new project directory in your workspace
-  ```bash
-  mkdir -p ~/41118_ws/project
-  cd ~/41118_ws/project
-  ```
-* Clone the repository
-  ```bash
-  git clone git@github.com:AshMudaly/Rally-Racing.git
-  ```
-* Install Python dependencies
-  ```bash
-  pip install stable-baselines3[extra] gymnasium torch tensorboard
-  ```
-* Source ROS2 (if you add this to your ~/.bashrc, then you don't need to do this each time)
-  ```bash
-  source /opt/ros/humble/setup.bash
-  ```
-
-## Project Layout
-```
-~/41118_ws/project/Rally-Racing/
-├── launch/
-│   └── train.launch.py     # Brings up Gazebo, spawns car, starts training
-├── worlds/
-│   └── oval_track.sdf      # Oval track world with inner/outer walls
-├── urdf/
-│   └── car.urdf            # Differential-drive car with 5 ray sensors
-├── src/
-│   ├── car_env.py          # Gymnasium environment wrapping ROS2 + Gazebo
-│   ├── reward.py           # Reward function (progress, speed, swerve, walls)
-│   └── train.py            # PPO training script with checkpointing
-├── models/                 # Saved PPO weights (resume.zip, best/, checkpoints) — gitignored
-└── logs/                   # TensorBoard logs + monitor.csv — gitignored
+```bash
+cd ~/41118_ws/project/Rally-Racing
+pip install -r requirements.txt
+pip install -e .
 ```
 
-## Launching
-### Training
-* Launch Gazebo, spawn the car, and start training in one command:
-  ```bash
-  cd ~/41118_ws/project/Rally-Racing
-  ros2 launch launch/train.launch.py
-  ```
-  The launch file starts Gazebo immediately, spawns the car after 5 seconds, and kicks off `train.py` after 12 seconds. Training resumes from `models/resume.zip` if it exists, otherwise starts fresh.
+The `-e .` installs `simple_driving` in editable mode, so code changes apply without reinstalling.
 
-* To start a completely fresh training run, remove all saved checkpoints first:
-  ```bash
-  rm -rf ~/41118_ws/project/Rally-Racing/models/*.zip
-  rm -rf ~/41118_ws/project/Rally-Racing/models/best/*
-  rm -rf ~/41118_ws/project/Rally-Racing/logs/*
-  ```
+Verify the install:
+```bash
+python3 -c "import simple_driving; import gymnasium as gym; print([e for e in gym.envs.registry.keys() if 'Driving' in e])"
+# Expected: ['SimpleDriving-v0', 'RallyDriving-v0']
+```
+
+## Scenarios
+Select via `env.reset(options={"scenario": ...})`:
+
+| Scenario | Checkpoints | Obstacles | Ramps | Use Case |
+|----------|-------------|-----------|-------|----------|
+| `phase1` | 6 default   | none      | none  | Learn racing line on bare track |
+| `phase2` | 6 default   | 4 cones   | none  | Add obstacle avoidance |
+| `phase3` | 6 default   | 4 cones   | 2 ramps | Choose between safe path or jumps |
+
+Override the checkpoint course at reset:
+```python
+env.reset(options={"scenario": "phase3", "checkpoints": [(5, 5), (10, 0), ...]})
+```
+
+To change the default checkpoints, obstacle positions, or ramp positions, edit the class constants at the top of `simple_driving/envs/rally_driving_env.py`:
+```python
+CHECKPOINTS       = [(16, 16), (16, 2), ...]
+OBSTACLE_HOMES    = [(8, 8), (0, 8), ...]
+RAMP_POSITIONS    = [(10, 9, math.radians(-30)), ...]
+```
+
+## Training
+
+### Basic training
+```bash
+cd src
+python3 train.py
+```
+Trains for 500k steps using 16 parallel environments. Saves intermediate checkpoints to `models/` every 10k steps and the best-evaluated model to `models/best/best_model.zip`.
+
+### Configuration
+Edit the top of `src/train.py`:
+```python
+TOTAL_TIMESTEPS = 500_000     # how long to train
+N_ENVS          = 16          # parallel envs (reduce if low on RAM)
+SCENARIO        = "phase1"    # which scenario to train on
+LOAD_PREVIOUS   = True        # resume from models/resume.zip if it exists
+RESET_TIMESTEPS = False       # True = each run shows separately in TensorBoard
+```
+
+### Curriculum learning (recommended for phase3)
+Training phase3 from scratch is hard — too many things to learn at once. Train progressively:
+
+1. Set `SCENARIO = "phase1"` and run until reward plateaus (~500k steps)
+2. Change to `SCENARIO = "phase2"`, keep `LOAD_PREVIOUS = True`, train another 300k
+3. Change to `SCENARIO = "phase3"`, train another 500k
+
+Each phase starts from the weights of the previous one.
+
+### Starting completely fresh
+```bash
+rm -rf ../models/*.zip ../models/best/*.zip ../logs/*
+python3 train.py
+```
 
 ### Monitoring with TensorBoard
-* In a separate terminal, launch TensorBoard to watch training curves:
-  ```bash
-  tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
-  ```
-  Then open http://localhost:6006 in your browser. Key metrics to watch:
-    * `rollout/ep_rew_mean` — average episode reward (should trend upward)
-    * `rollout/ep_len_mean` — average episode length (1000 = full episode, low values mean frequent crashes)
-    * `train/entropy_loss` — policy randomness (should decrease as the agent commits to a strategy)
-
-### Inspecting Episode Logs
-* The `Monitor` wrapper writes one row per episode to `logs/monitor.csv`:
-  ```bash
-  tail -f ~/41118_ws/project/Rally-Racing/logs/monitor.csv
-  ```
-  Columns are `r` (episode return), `l` (episode length), `t` (wall-clock time since start).
-
-### Watching the Trained Agent
-* The Gazebo GUI opens automatically with the launch file — watch the car drive in the simulation window. To run a saved model deterministically without training:
-  ```bash
-  # (Requires an eval script — see project source)
-  ```
-
-## Errors
-If you are getting errors, first check you are following the instructions correctly. Here are a few frequently encountered errors.
-
-### Address Already in Use (Gazebo Master)
-If you get an error like:
+In a separate terminal:
 ```bash
-[Err] [Master.cc:96] EXCEPTION: Unable to start server[bind: Address already in use].
-There is probably another Gazebo process running.
+tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
 ```
-This means a previous Gazebo process is still holding port 11345. `killall gazebo` is not always enough. Run:
+Open http://localhost:6006. Key metrics:
+- `rollout/ep_rew_mean` — average episode reward (should trend up)
+- `rollout/ep_len_mean` — average episode length
+- `eval/mean_reward` — score on the eval env (updated every 10k steps)
+
+## Evaluation
+
+Run the best saved model on all three scenarios with the PyBullet GUI:
 ```bash
-killall -9 gzserver gzclient gazebo
-pkill -9 -f train.py
-pkill -9 -f spawn_entity
-fuser -k 11345/tcp
-```
-Then confirm nothing is bound:
-```bash
-ss -tlnp | grep 11345
+cd src
+python3 test.py
 ```
 
-### Corrupt Resume Checkpoint
-If you get an error like:
+Options:
 ```bash
-zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
-ValueError: Error: the file ~/41118_ws/project/Rally-Racing/models/resume.zip wasn't a zip-file
+python3 test.py --model ../models/ppo_rally_final.zip
+python3 test.py --scenarios phase3
+python3 test.py --no-render            # headless, faster
+python3 test.py --scenarios phase1 phase2 phase3
 ```
-The resume checkpoint was corrupted, usually by an interrupted save. The training script automatically moves corrupt files to `resume.zip.broken` and starts fresh, but if you want to manually recover:
-```bash
-# Verify any saved checkpoint
-python3 -c "import zipfile; print(zipfile.ZipFile('/home/$USER/41118_ws/project/Rally-Racing/models/SOME_FILE.zip').testzip())"
-# Returns None if intact, otherwise prints the corrupt member
-```
-If a per-step checkpoint exists in `models/`, promote it to `resume.zip`:
-```bash
-cp ~/41118_ws/project/Rally-Racing/models/ppo_racing_50000_steps.zip \
-   ~/41118_ws/project/Rally-Racing/models/resume.zip
-```
-
-### Sensor Timeout
-If you see:
-```bash
-RuntimeError: Sensor timeout after 10.0s — no data on rays: ['front', ...].
-Is Gazebo running and the car spawned?
-```
-The training script could not detect any ray sensor publishing within 10 seconds of startup. This usually means Gazebo died or the car never spawned. Check the Gazebo terminal output for errors, then clean up and relaunch:
-```bash
-killall -9 gzserver gzclient
-ros2 launch launch/train.launch.py
-```
-
-### Car Spawned Inside a Wall
-If the car immediately reports a collision on every episode reset, the spawn coordinates in `train.launch.py` may place it inside or beside a track wall. The track surface is the annular region between the inner walls (at |y| = 4, |x| = 9) and the outer walls (at |y| = 8, |x| = 13). A safe spawn is along the bottom straight:
-```python
-"-x", "0.0",
-"-y", "-6.0",
-"-z", "0.1",
-"-Y", "0.0",
-```
-
-### KDL Inertia Warning
-You will see this warning on every launch:
-```bash
-[WARN] [kdl_parser]: The root link base_link has an inertia specified in the URDF,
-but KDL does not support a root link with an inertia.
-```
-This is harmless — KDL just ignores the inertia of the root link. It does not affect the differential-drive plugin or the simulation. You can silence it by adding a massless dummy root link to `car.urdf`, but it is not required.
-
-### Agent Won't Move
-If `monitor.csv` shows episode lengths of 1000 with very negative rewards, the agent has learned the "do nothing" local optimum — sitting still avoids the collision penalty. The reward function in `reward.py` includes a per-step time penalty (`w_time`) specifically to break this strategy. If you still see it after 100k+ steps:
-* Increase `w_time` from 0.05 to 0.1 in `reward.py`
-* Increase `w_progress` to make forward motion more attractive
-* Increase `ent_coef` in `train.py` to encourage more exploration
-
-### Agent Crashes Head-On Every Episode
-This is normal during early training (first ~50k steps). The agent has learned that forward motion earns reward but has not yet connected ray sensor readings to crash avoidance. If it persists past 200k steps:
-* Increase `w_collision` from 50.0 to 100.0 or higher
-* Increase `w_wall` and widen `min_ray_distance` so the proximity penalty kicks in earlier
-* Raise `ent_coef` temporarily to encourage trying turning actions
 
 ## Reward Function
-The reward at each timestep is the sum of:
-| Component | Sign | Purpose |
-|-----------|------|---------|
-| `progress` | + | Signed forward velocity along the car's heading — reversing penalised at 2× |
-| `speed` | + | Encourages going fast, capped at 3 m/s |
-| `swerve_penalty` | − | Penalises rapid changes in steering (squared delta) |
-| `wall_proximity` | − | Exponential penalty as any ray drops below 0.3 |
-| `time_penalty` | − | Constant per-step cost so standing still bleeds reward |
-| `collision` | − | One-shot −50 when any ray drops below 0.05 (terminates episode) |
 
-All weights live at the top of `RewardCalculator.__init__` in `reward.py`.
+All weights live in `src/reward.py` under `RewardConfig`. Edit them to shape behaviour:
 
-## Hyperparameters
-The PPO configuration lives in `train.py`:
-* Network: 3 × 256 MLP for both policy and value heads, ReLU activation
-* Learning rate: 3e-4
-* Batch size: 64, n_steps 2048, n_epochs 10
-* γ = 0.99, GAE λ = 0.95
-* Entropy bonus: 0.01
-* Total timesteps: 200,000 per run (resumable)
+| Component | Sign | Default | Purpose |
+|-----------|------|---------|---------|
+| `GOAL_REWARD`       | + | +100 | Hitting a checkpoint |
+| `STEP_PENALTY`      | − | −0.5 | Per-step cost (encourages speed) |
+| `PROGRESS_SCALE`    | + | 3.0  | Multiplier on closing distance to goal |
+| `YAW_DELTA_PENALTY` | − | −5   | Per radian of heading change |
+| `ROLL_DELTA_PENALTY`| − | −15  | Penalises chassis tilt |
+| `PITCH_DELTA_PENALTY`| −| −4   | Penalises front-back tilt |
+| `OBSTACLE_PENALTY`  | − | −100 | Within `MIN_SAFE_DISTANCE` of any obstacle |
+| `REPULSE_SCALE`     | − | 10   | Soft penalty inside `REPULSE_RADIUS` |
+| `OUT_OF_BOUNDS`     | − | −50  | Outside `WORLD_BOUNDARY` |
+| `AIRBORNE_BONUS`    | ± | +1   | Per step while pitched up and making progress (phase3) |
 
-Checkpoints save every 10,000 steps to `models/ppo_racing_*_steps.zip`. The best-evaluated model is saved separately to `models/best/best_model.zip`. The resume checkpoint `models/resume.zip` is written atomically (temp file + `os.replace`) so an interrupted training run cannot corrupt it.
+### Tuning the jump tradeoff
+The `AIRBORNE_BONUS` controls whether the agent treats ramps as opportunities or hazards:
+- **Positive** (default +1) — agent learns to take jumps for shorter laps
+- **Zero** — agent ignores ramps, prefers ground-level path
+- **Negative** — agent actively avoids ramps
+
+## Errors and Troubleshooting
+
+### `ModuleNotFoundError: No module named 'simple_driving'`
+The package isn't installed. Run `pip install -e .` from the project root.
+
+### `Cannot find simplecar.urdf`
+The URDF files must sit in `simple_driving/resources/` alongside `car.py`. Confirm:
+```bash
+ls simple_driving/resources/*.urdf
+# Should show: simplecar.urdf  simplegoal.urdf  simpleplane.urdf
+```
+
+### Resume Checkpoint Corrupt
+```
+zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
+```
+The training script handles this automatically — moves the bad file to `resume.zip.broken` and starts fresh. To manually recover from an older checkpoint:
+```bash
+cp models/ppo_rally_50000_steps.zip models/resume.zip
+python3 -c "import zipfile; print(zipfile.ZipFile('models/resume.zip').testzip())"
+# Prints None if the zip is valid
+```
+
+### SubprocVecEnv Hangs on Startup
+The `spawn` start method has issues on some systems. Drop `N_ENVS = 1` in `train.py` to confirm a single-process run works, then increase. If hangs persist, change `SubprocVecEnv` to `DummyVecEnv` in `make_train_env()`.
+
+### Agent Won't Move
+Early in training the agent often learns to sit still to avoid the obstacle penalty. The step penalty is the counter-incentive. If after 100k+ steps episodes still time out with deeply negative rewards:
+- Increase `STEP_PENALTY` magnitude (more negative)
+- Increase `PROGRESS_SCALE`
+
+### Agent Drives in Circles
+Usually means yaw penalty is too low relative to progress reward. Increase `YAW_DELTA_PENALTY` magnitude (from −5 to −10 or more).
+
+### Agent Crashes Into Every Obstacle
+The obstacle repulsion field hasn't built a strong enough gradient. Try:
+- Increase `REPULSE_RADIUS` so the penalty kicks in earlier
+- Increase `REPULSE_SCALE`
+- Increase the entropy coefficient in `train.py` (`ent_coef=0.05`) to encourage exploring evasive actions
