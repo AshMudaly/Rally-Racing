@@ -1,0 +1,42 @@
+cat > .gitignore << 'EOF'
+# ── Training artifacts ───────────────────────────────────────────────
+models/
+!models/.gitkeep
+logs/
+!logs/.gitkeep
+*.zip
+*.broken
+*.tmp
+
+# ── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+venv/
+env/
+.venv/
+
+# ── ROS2 / colcon build outputs ──────────────────────────────────────
+build/
+install/
+log/
+
+# ── Editor / IDE ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS junk ──────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Gazebo runtime ───────────────────────────────────────────────────
+.gazebo/
+EOF
