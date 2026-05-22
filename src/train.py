@@ -13,6 +13,10 @@ import os
 import sys
 import zipfile
 
+import torch
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+
 # Make `simple_driving` and our `src/` modules importable
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -44,7 +48,7 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 
 # ── Hyperparameters ───────────────────────────────────────────────────────
 TOTAL_TIMESTEPS    = 500_000
-N_ENVS             = 16
+N_ENVS             = 8
 SCENARIO           = "phase1"           # phase1 / phase2 / phase3
 LOAD_PREVIOUS      = True
 RESET_TIMESTEPS    = False              # set True to see each run as separate in TB
