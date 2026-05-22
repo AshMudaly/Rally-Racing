@@ -24,11 +24,15 @@ First install some dependencies:
   ```
 
 ### Installation: Racing Package
-* Create a new colcon workspace
+* Create a new project directory in your workspace
   ```bash
   mkdir -p ~/41118_ws/project
+  cd ~/41118_ws/project
   ```
-* Pull the repository to the `project` directory in this workspace
+* Clone the repository
+  ```bash
+  git clone git@github.com:AshMudaly/Rally-Racing.git
+  ```
 * Install Python dependencies
   ```bash
   pip install stable-baselines3[extra] gymnasium torch tensorboard
@@ -51,30 +55,30 @@ First install some dependencies:
 │   ├── car_env.py          # Gymnasium environment wrapping ROS2 + Gazebo
 │   ├── reward.py           # Reward function (progress, speed, swerve, walls)
 │   └── train.py            # PPO training script with checkpointing
-├── models/                 # Saved PPO weights (resume.zip, best/, checkpoints)
-└── logs/                   # TensorBoard logs + monitor.csv
+├── models/                 # Saved PPO weights (resume.zip, best/, checkpoints) — gitignored
+└── logs/                   # TensorBoard logs + monitor.csv — gitignored
 ```
 
 ## Launching
 ### Training
 * Launch Gazebo, spawn the car, and start training in one command:
   ```bash
-  cd ~/41118_ws/project/racing
+  cd ~/41118_ws/project/Rally-Racing
   ros2 launch launch/train.launch.py
   ```
   The launch file starts Gazebo immediately, spawns the car after 5 seconds, and kicks off `train.py` after 12 seconds. Training resumes from `models/resume.zip` if it exists, otherwise starts fresh.
 
 * To start a completely fresh training run, remove all saved checkpoints first:
   ```bash
-  rm -rf ~/41118_ws/project/racing/models/*.zip
-  rm -rf ~/41118_ws/project/racing/models/best/*
-  rm -rf ~/41118_ws/project/racing/logs/*
+  rm -rf ~/41118_ws/project/Rally-Racing/models/*.zip
+  rm -rf ~/41118_ws/project/Rally-Racing/models/best/*
+  rm -rf ~/41118_ws/project/Rally-Racing/logs/*
   ```
 
 ### Monitoring with TensorBoard
 * In a separate terminal, launch TensorBoard to watch training curves:
   ```bash
-  tensorboard --logdir ~/41118_ws/project/racing/logs
+  tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
   ```
   Then open http://localhost:6006 in your browser. Key metrics to watch:
     * `rollout/ep_rew_mean` — average episode reward (should trend upward)
@@ -84,7 +88,7 @@ First install some dependencies:
 ### Inspecting Episode Logs
 * The `Monitor` wrapper writes one row per episode to `logs/monitor.csv`:
   ```bash
-  tail -f ~/41118_ws/project/racing/logs/monitor.csv
+  tail -f ~/41118_ws/project/Rally-Racing/logs/monitor.csv
   ```
   Columns are `r` (episode return), `l` (episode length), `t` (wall-clock time since start).
 
@@ -119,18 +123,18 @@ ss -tlnp | grep 11345
 If you get an error like:
 ```bash
 zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
-ValueError: Error: the file ~/41118_ws/project/racing/models/resume.zip wasn't a zip-file
+ValueError: Error: the file ~/41118_ws/project/Rally-Racing/models/resume.zip wasn't a zip-file
 ```
 The resume checkpoint was corrupted, usually by an interrupted save. The training script automatically moves corrupt files to `resume.zip.broken` and starts fresh, but if you want to manually recover:
 ```bash
 # Verify any saved checkpoint
-python3 -c "import zipfile; print(zipfile.ZipFile('~/41118_ws/project/racing/models/SOME_FILE.zip').testzip())"
+python3 -c "import zipfile; print(zipfile.ZipFile('/home/$USER/41118_ws/project/Rally-Racing/models/SOME_FILE.zip').testzip())"
 # Returns None if intact, otherwise prints the corrupt member
 ```
 If a per-step checkpoint exists in `models/`, promote it to `resume.zip`:
 ```bash
-cp ~/41118_ws/project/racing/models/ppo_racing_50000_steps.zip \
-   ~/41118_ws/project/racing/models/resume.zip
+cp ~/41118_ws/project/Rally-Racing/models/ppo_racing_50000_steps.zip \
+   ~/41118_ws/project/Rally-Racing/models/resume.zip
 ```
 
 ### Sensor Timeout
