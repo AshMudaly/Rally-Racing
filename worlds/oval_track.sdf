@@ -1,0 +1,159 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="oval_track">
+
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <physics type="ode">
+      <real_time_update_rate>1000</real_time_update_rate>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+
+    <!-- Outer wall: top straight -->
+    <model name="ow_top">
+      <static>true</static><pose>0 8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>20 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>20 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Outer wall: bottom straight -->
+    <model name="ow_bot">
+      <static>true</static><pose>0 -8 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>20 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>20 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Outer end caps: right -->
+    <model name="ow_r1">
+      <static>true</static><pose>11 5.5 0.5 0 0 0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="ow_r2">
+      <static>true</static><pose>13 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="ow_r3">
+      <static>true</static><pose>11 -5.5 0.5 0 0 -0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Outer end caps: left -->
+    <model name="ow_l1">
+      <static>true</static><pose>-11 5.5 0.5 0 0 -0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="ow_l2">
+      <static>true</static><pose>-13 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="ow_l3">
+      <static>true</static><pose>-11 -5.5 0.5 0 0 0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry>
+          <material><ambient>1 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Inner wall: top straight -->
+    <model name="iw_top">
+      <static>true</static><pose>0 4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>14 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>14 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Inner wall: bottom straight -->
+    <model name="iw_bot">
+      <static>true</static><pose>0 -4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>14 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>14 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Inner end caps: right -->
+    <model name="iw_r1">
+      <static>true</static><pose>8 2.8 0.5 0 0 0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="iw_r2">
+      <static>true</static><pose>9 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="iw_r3">
+      <static>true</static><pose>8 -2.8 0.5 0 0 -0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- Inner end caps: left -->
+    <model name="iw_l1">
+      <static>true</static><pose>-8 2.8 0.5 0 0 -0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="iw_l2">
+      <static>true</static><pose>-9 0 0.5 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+    <model name="iw_l3">
+      <static>true</static><pose>-8 -2.8 0.5 0 0 0.52</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry>
+          <material><ambient>0.2 0.2 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
