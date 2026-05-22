@@ -1,194 +1,390 @@
-# Rally Racing: PPO Rally Car on a Designated Track
+Here’s a cleaner, more GitHub-friendly README rewrite that keeps the important technical details while removing repetition and reducing the “wall of text” effect.
 
-A PPO-trained autonomous rally car for *41118 Artificial Intelligence in Robotics*. The car drives a track defined by a sequence of checkpoints, avoids obstacles, and can optionally take jumps to finish laps faster.
+# Rally Racing — PPO Autonomous Rally Car
 
-**Stack:** PyBullet (physics) + Gymnasium (RL interface) + Stable-Baselines3 (PPO).
+A reinforcement learning rally car built for *41118 Artificial Intelligence in Robotics*.
 
-## Project Structure
-```
+The agent learns to:
+
+* follow checkpoint-based rally tracks
+* avoid obstacles
+* optionally use ramps/jumps to shorten lap times
+
+Built using:
+
+* PyBullet — physics simulation
+* Gymnasium — RL environment interface
+* Stable-Baselines3 — PPO implementation
+
+---
+
+# Features
+
+* Custom PyBullet rally environment
+* Progressive curriculum training
+* Multi-phase scenarios
+* Obstacle avoidance
+* Ramp/jump mechanics
+* Parallel PPO training
+* TensorBoard logging
+* GUI and headless evaluation modes
+
+---
+
+# Project Structure
+
+```text
 Rally-Racing/
-├── simple_driving/                    # Installable Python package
-│   ├── __init__.py                    # Registers Gym environments
+├── simple_driving/
 │   ├── envs/
-│   │   ├── simple_driving_env.py      # Base env: single goal, single obstacle
-│   │   └── rally_driving_env.py       # Rally env: checkpoints, obstacles, ramps
+│   │   ├── simple_driving_env.py
+│   │   └── rally_driving_env.py
 │   └── resources/
-│       ├── car.py                     # Car kinematics + URDF loader
-│       ├── plane.py                   # Ground plane
-│       ├── goal.py                    # Goal/checkpoint marker
-│       ├── obstacle.py                # Static red cylinder
-│       ├── ramp.py                    # Orange ramp for jumps
-│       └── *.urdf                     # PyBullet model files
+│       ├── car.py
+│       ├── obstacle.py
+│       ├── ramp.py
+│       └── *.urdf
+│
 ├── src/
-│   ├── reward.py                      # Reward function and tunable weights
-│   ├── observation.py                 # Observation callback (base env only)
-│   ├── train.py                       # PPO training
-│   └── test.py                        # Evaluation with rendering
-├── models/                            # Trained weights (gitignored)
-├── logs/                              # TensorBoard logs (gitignored)
-├── setup.py
+│   ├── reward.py
+│   ├── observation.py
+│   ├── train.py
+│   └── test.py
+│
+├── models/
+├── logs/
 ├── requirements.txt
-├── .gitignore
+├── setup.py
 └── README.md
 ```
 
-## Installation
-Python 3.10+ required. No ROS or Gazebo.
+---
+
+# Installation
+
+Python 3.10+ recommended.
 
 ```bash
 cd ~/41118_ws/project/Rally-Racing
+
 pip install -r requirements.txt
 pip install -e .
 ```
 
-The `-e .` installs `simple_driving` in editable mode, so code changes apply without reinstalling.
+Verify the environment registration:
 
-Verify the install:
 ```bash
 python3 -c "import simple_driving; import gymnasium as gym; print([e for e in gym.envs.registry.keys() if 'Driving' in e])"
-# Expected: ['SimpleDriving-v0', 'RallyDriving-v0']
 ```
 
-## Scenarios
-Select via `env.reset(options={"scenario": ...})`:
+Expected output:
 
-| Scenario | Checkpoints | Obstacles | Ramps | Use Case |
-|----------|-------------|-----------|-------|----------|
-| `phase1` | 6 default   | none      | none  | Learn racing line on bare track |
-| `phase2` | 6 default   | 4 cones   | none  | Add obstacle avoidance |
-| `phase3` | 6 default   | 4 cones   | 2 ramps | Choose between safe path or jumps |
+```text
+['SimpleDriving-v0', 'RallyDriving-v0']
+```
 
-Override the checkpoint course at reset:
+---
+
+# Scenarios
+
+The environment supports three training phases:
+
+| Scenario | Description                   |
+| -------- | ----------------------------- |
+| `phase1` | Basic checkpoint racing       |
+| `phase2` | Adds obstacle avoidance       |
+| `phase3` | Adds ramps and jump decisions |
+
+Example reset:
+
 ```python
-env.reset(options={"scenario": "phase3", "checkpoints": [(5, 5), (10, 0), ...]})
+env.reset(options={"scenario": "phase3"})
 ```
 
-To change the default checkpoints, obstacle positions, or ramp positions, edit the class constants at the top of `simple_driving/envs/rally_driving_env.py`:
+Custom checkpoint layouts:
+
 ```python
-CHECKPOINTS       = [(16, 16), (16, 2), ...]
-OBSTACLE_HOMES    = [(8, 8), (0, 8), ...]
-RAMP_POSITIONS    = [(10, 9, math.radians(-30)), ...]
+env.reset(
+    options={
+        "scenario": "phase3",
+        "checkpoints": [(5, 5), (10, 0), (15, 5)]
+    }
+)
 ```
 
-## Training
+Default track elements can be edited inside:
 
-### Basic training
+```text
+simple_driving/envs/rally_driving_env.py
+```
+
+---
+
+# Training
+
+Start training:
+
 ```bash
 cd src
 python3 train.py
 ```
-Trains for 500k steps using 16 parallel environments. Saves intermediate checkpoints to `models/` every 10k steps and the best-evaluated model to `models/best/best_model.zip`.
 
-### Configuration
-Edit the top of `src/train.py`:
+Models are saved automatically to:
+
+* `models/`
+* `models/best/`
+
+TensorBoard logs:
+
+* `logs/`
+
+---
+
+# Recommended Training Settings
+
+Current stable defaults:
+
 ```python
-TOTAL_TIMESTEPS = 500_000     # how long to train
-N_ENVS          = 16          # parallel envs (reduce if low on RAM)
-SCENARIO        = "phase1"    # which scenario to train on
-LOAD_PREVIOUS   = True        # resume from models/resume.zip if it exists
-RESET_TIMESTEPS = False       # True = each run shows separately in TensorBoard
+TOTAL_TIMESTEPS = 500_000
+N_ENVS          = 8
+SCENARIO        = "phase1"
+LOAD_PREVIOUS   = True
+RESET_TIMESTEPS = False
 ```
 
-### Curriculum learning (recommended for phase3)
-Training phase3 from scratch is hard — too many things to learn at once. Train progressively:
+## Parallel Environment Sizing
 
-1. Set `SCENARIO = "phase1"` and run until reward plateaus (~500k steps)
-2. Change to `SCENARIO = "phase2"`, keep `LOAD_PREVIOUS = True`, train another 300k
-3. Change to `SCENARIO = "phase3"`, train another 500k
+PyBullet training is CPU-heavy.
 
-Each phase starts from the weights of the previous one.
+Recommended rule:
 
-### Starting completely fresh
-```bash
-rm -rf ../models/*.zip ../models/best/*.zip ../logs/*
-python3 train.py
+```python
+N_ENVS ≈ physical CPU cores / 2
 ```
 
-### Monitoring with TensorBoard
-In a separate terminal:
+Typical values:
+
+| CPU     | Recommended `N_ENVS` |
+| ------- | -------------------- |
+| 4 cores | 2–4                  |
+| 6 cores | 4–6                  |
+| 8 cores | 6–8                  |
+
+If training becomes unstable or hangs:
+
+```python
+N_ENVS = 4
+```
+
+---
+
+# Important Performance Fix
+
+`train.py` intentionally uses:
+
+```python
+torch.set_num_threads(1)
+```
+
+Without this, PyTorch may oversubscribe CPU threads across subprocesses and severely reduce PPO performance.
+
+Do not remove unless benchmarking confirms otherwise.
+
+---
+
+# Curriculum Training (Recommended)
+
+Training phase3 from scratch is difficult.
+
+Recommended progression:
+
+1. Train `phase1`
+2. Continue into `phase2`
+3. Continue into `phase3`
+
+Example workflow:
+
+```python
+SCENARIO = "phase1"
+LOAD_PREVIOUS = True
+```
+
+This produces significantly more stable learning.
+
+---
+
+# Monitoring Training
+
+Run TensorBoard:
+
 ```bash
 tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
 ```
-Open http://localhost:6006. Key metrics:
-- `rollout/ep_rew_mean` — average episode reward (should trend up)
-- `rollout/ep_len_mean` — average episode length
-- `eval/mean_reward` — score on the eval env (updated every 10k steps)
 
-## Evaluation
+Open:
 
-Run the best saved model on all three scenarios with the PyBullet GUI:
+```text
+http://localhost:6006
+```
+
+Useful metrics:
+
+* `rollout/ep_rew_mean`
+* `rollout/ep_len_mean`
+* `eval/mean_reward`
+
+---
+
+# Evaluation
+
+Run trained models with the PyBullet GUI:
+
 ```bash
 cd src
 python3 test.py
 ```
 
-Options:
+Examples:
+
 ```bash
-python3 test.py --model ../models/ppo_rally_final.zip
 python3 test.py --scenarios phase3
-python3 test.py --no-render            # headless, faster
-python3 test.py --scenarios phase1 phase2 phase3
+python3 test.py --no-render
+python3 test.py --model ../models/ppo_rally_final.zip
 ```
 
-## Reward Function
+---
 
-All weights live in `src/reward.py` under `RewardConfig`. Edit them to shape behaviour:
+# Reward Function
 
-| Component | Sign | Default | Purpose |
-|-----------|------|---------|---------|
-| `GOAL_REWARD`       | + | +100 | Hitting a checkpoint |
-| `STEP_PENALTY`      | − | −0.5 | Per-step cost (encourages speed) |
-| `PROGRESS_SCALE`    | + | 3.0  | Multiplier on closing distance to goal |
-| `YAW_DELTA_PENALTY` | − | −5   | Per radian of heading change |
-| `ROLL_DELTA_PENALTY`| − | −15  | Penalises chassis tilt |
-| `PITCH_DELTA_PENALTY`| −| −4   | Penalises front-back tilt |
-| `OBSTACLE_PENALTY`  | − | −100 | Within `MIN_SAFE_DISTANCE` of any obstacle |
-| `REPULSE_SCALE`     | − | 10   | Soft penalty inside `REPULSE_RADIUS` |
-| `OUT_OF_BOUNDS`     | − | −50  | Outside `WORLD_BOUNDARY` |
-| `AIRBORNE_BONUS`    | ± | +1   | Per step while pitched up and making progress (phase3) |
+Reward tuning lives in:
 
-### Tuning the jump tradeoff
-The `AIRBORNE_BONUS` controls whether the agent treats ramps as opportunities or hazards:
-- **Positive** (default +1) — agent learns to take jumps for shorter laps
-- **Zero** — agent ignores ramps, prefers ground-level path
-- **Negative** — agent actively avoids ramps
+```text
+src/reward.py
+```
 
-## Errors and Troubleshooting
+Main reward components:
 
-### `ModuleNotFoundError: No module named 'simple_driving'`
-The package isn't installed. Run `pip install -e .` from the project root.
+| Component             | Purpose                           |
+| --------------------- | --------------------------------- |
+| Goal reward           | Encourage checkpoint completion   |
+| Step penalty          | Encourage faster laps             |
+| Progress reward       | Encourage movement toward targets |
+| Obstacle penalties    | Encourage avoidance               |
+| Orientation penalties | Reduce unstable driving           |
+| Airborne bonus        | Encourage jump usage              |
 
-### `Cannot find simplecar.urdf`
-The URDF files must sit in `simple_driving/resources/` alongside `car.py`. Confirm:
+The `AIRBORNE_BONUS` controls ramp behaviour:
+
+* positive → prefers jumps
+* zero → neutral
+* negative → avoids ramps
+
+---
+
+# Smoke Testing
+
+Before long training runs, verify the environment loads correctly:
+
 ```bash
-ls simple_driving/resources/*.urdf
-# Should show: simplecar.urdf  simplegoal.urdf  simpleplane.urdf
+python3 - <<'PY'
+import gymnasium as gym
+import simple_driving
+
+env = gym.make("RallyDriving-v0")
+obs, info = env.reset()
+
+print("Environment created successfully")
+env.close()
+PY
 ```
 
-### Resume Checkpoint Corrupt
-```
-zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
-```
-The training script handles this automatically — moves the bad file to `resume.zip.broken` and starts fresh. To manually recover from an older checkpoint:
+This catches:
+
+* broken environment registration
+* callback issues
+* reward mismatches
+* observation shape errors
+
+---
+
+# Troubleshooting
+
+## `ModuleNotFoundError: simple_driving`
+
+Reinstall the package:
+
 ```bash
-cp models/ppo_rally_50000_steps.zip models/resume.zip
-python3 -c "import zipfile; print(zipfile.ZipFile('models/resume.zip').testzip())"
-# Prints None if the zip is valid
+pip install -e .
 ```
 
-### SubprocVecEnv Hangs on Startup
-The `spawn` start method has issues on some systems. Drop `N_ENVS = 1` in `train.py` to confirm a single-process run works, then increase. If hangs persist, change `SubprocVecEnv` to `DummyVecEnv` in `make_train_env()`.
+---
 
-### Agent Won't Move
-Early in training the agent often learns to sit still to avoid the obstacle penalty. The step penalty is the counter-incentive. If after 100k+ steps episodes still time out with deeply negative rewards:
-- Increase `STEP_PENALTY` magnitude (more negative)
-- Increase `PROGRESS_SCALE`
+## `Cannot find simplecar.urdf`
 
-### Agent Drives in Circles
-Usually means yaw penalty is too low relative to progress reward. Increase `YAW_DELTA_PENALTY` magnitude (from −5 to −10 or more).
+Ensure URDF files exist in:
 
-### Agent Crashes Into Every Obstacle
-The obstacle repulsion field hasn't built a strong enough gradient. Try:
-- Increase `REPULSE_RADIUS` so the penalty kicks in earlier
-- Increase `REPULSE_SCALE`
-- Increase the entropy coefficient in `train.py` (`ent_coef=0.05`) to encourage exploring evasive actions
+```text
+simple_driving/resources/
+```
+
+---
+
+## NumPy / SciPy Compatibility Errors
+
+If you see:
+
+```text
+A module compiled using NumPy 1.x cannot be run in NumPy 2.x
+```
+
+Avoid mixing:
+
+* Ubuntu apt-installed scientific packages
+* pip-installed NumPy packages
+
+Recommended fix:
+
+```bash
+pip install --upgrade numpy scipy matplotlib
+```
+
+Using a virtual environment is strongly recommended.
+
+---
+
+## SubprocVecEnv Startup Hangs
+
+Reduce environment count:
+
+```python
+N_ENVS = 1
+```
+
+If the issue disappears, gradually increase until stable.
+
+---
+
+## Harmless Matplotlib Warning
+
+You may see:
+
+```text
+UserWarning: Unable to import Axes3D
+```
+
+This warning is harmless for this project and does not affect training or evaluation.
+
+---
+
+# Future Improvements
+
+Potential extensions:
+
+* domain randomisation
+* LiDAR observations
+* procedural track generation
+* lap timing analytics
+* SAC / TD3 comparisons
+* camera-based observations
+
+---
