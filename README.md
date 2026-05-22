@@ -40,7 +40,7 @@ First install some dependencies:
 
 ## Project Layout
 ```
-~/41118_ws/project/racing/
+~/41118_ws/project/Rally-Racing/
 ├── launch/
 │   └── train.launch.py     # Brings up Gazebo, spawns car, starts training
 ├── worlds/
