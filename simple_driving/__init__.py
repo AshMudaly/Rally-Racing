@@ -1,2 +1,11 @@
-from simple_driving.envs.simple_driving_env import SimpleDrivingEnv
-from simple_driving.envs.rally_driving_env import RallyDrivingEnv
+from gymnasium.envs.registration import register
+
+register(
+    id='SimpleDriving-v0',
+    entry_point='simple_driving.envs:SimpleDrivingEnv'
+)
+
+register(
+    id='RallyDriving-v0',
+    entry_point='simple_driving.envs:RallyDrivingEnv'
+)
