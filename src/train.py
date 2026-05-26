@@ -47,11 +47,11 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 
 
 # ── Hyperparameters ───────────────────────────────────────────────────────
-TOTAL_TIMESTEPS    = 500_000
+TOTAL_TIMESTEPS    = 300_000
 N_ENVS             = 8
-SCENARIO           = "phase3"           # phase1 / phase2 / phase3
-LOAD_PREVIOUS      = True
-RESET_TIMESTEPS    = False              # set True to see each run as separate in TB
+SCENARIO           = "phase1"           # phase1 / phase2 / phase3
+LOAD_PREVIOUS      = False
+RESET_TIMESTEPS    = True              # set True to see each run as separate in TB
 
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
@@ -59,7 +59,7 @@ PPO_KWARGS = dict(
     batch_size    = 256,
     ent_coef      = 0.01,
     device        = "cpu",
-    policy_kwargs = dict(net_arch=[256, 256])
+    policy_kwargs = dict(net_arch=[256, 256]),  # ← add this
 )
 
 ENV_KWARGS = dict(

@@ -95,6 +95,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.prev_yaw = 0.0
         self.prev_roll = 0.0
         self.prev_pitch = 0.0
+        self.prev_yaw_delta = 0.0
         self.checkpoints = []
         self.checkpoint_objects = []
         self.current_checkpoint_idx = 0
