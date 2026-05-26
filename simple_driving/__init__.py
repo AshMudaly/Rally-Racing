@@ -8,4 +8,5 @@ register(
 register(
     id='RallyDriving-v0',
     entry_point='simple_driving.envs:RallyDrivingEnv'
+    self.prev_yaw_delta = 0.0
 )

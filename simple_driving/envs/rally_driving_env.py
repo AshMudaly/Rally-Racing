@@ -264,12 +264,15 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             dist_to_goal=dist_to_goal,
             reached_goal=self.reached_goal,
             prev_yaw=self.prev_yaw, current_yaw=yaw,
+            prev_yaw_delta=self.prev_yaw_delta,
             prev_roll=self.prev_roll, current_roll=roll,
             prev_pitch=self.prev_pitch, current_pitch=pitch,
             obstacle_positions=self.obstacle_positions,
             scenario=self.scenario,
         )
 
+        current_yaw_delta = self._wrap_yaw_delta(yaw - self.prev_yaw)
+        self.prev_yaw_delta = current_yaw_delta
         self.prev_yaw = yaw
         self.prev_roll = roll
         self.prev_pitch = pitch
@@ -355,4 +358,4 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         car_pos, _ = self._p.getBasePositionAndOrientation(self.car.car)
         lap_complete = self.current_checkpoint_idx >= len(self.checkpoints)
         out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
-        return self._envStepCounter > 50_000 or lap_complete or out_of_bounds
+        return self._envStepCounter > 500 or lap_complete or out_of_bounds

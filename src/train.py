@@ -49,7 +49,7 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 # ── Hyperparameters ───────────────────────────────────────────────────────
 TOTAL_TIMESTEPS    = 500_000
 N_ENVS             = 8
-SCENARIO           = "phase1"           # phase1 / phase2 / phase3
+SCENARIO           = "phase3"           # phase1 / phase2 / phase3
 LOAD_PREVIOUS      = True
 RESET_TIMESTEPS    = False              # set True to see each run as separate in TB
 
@@ -59,6 +59,7 @@ PPO_KWARGS = dict(
     batch_size    = 256,
     ent_coef      = 0.01,
     device        = "cpu",
+    policy_kwargs = dict(net_arch=[256, 256])
 )
 
 ENV_KWARGS = dict(
@@ -129,12 +130,6 @@ def make_eval_env():
 # ── Callbacks ─────────────────────────────────────────────────────────────
 def make_callbacks(eval_env):
     return CallbackList([
-        CheckpointCallback(
-            save_freq=10_000 // N_ENVS,   # divide because vec env multiplies
-            save_path=MODEL_DIR,
-            name_prefix="ppo_rally",
-            verbose=1,
-        ),
         EvalCallback(
             eval_env,
             best_model_save_path=BEST_DIR,
@@ -150,7 +145,6 @@ def make_callbacks(eval_env):
             verbose=1,
         ),
     ])
-
 
 # ── Main ──────────────────────────────────────────────────────────────────
 def main():

@@ -34,7 +34,7 @@ class RewardConfig:
     REGRESSION_PENALTY  =  -5.0    # extra penalty when moving away from goal
 
     # ── Smooth driving ─────────────────────────────────────────────────
-    YAW_DELTA_PENALTY    =  -5.0   # per radian of yaw change
+    YAW_JERK_PENALTY    =  -5.0   # per radian of yaw change
     ROLL_DELTA_PENALTY   = -15.0   # per radian of roll change (chassis tilt)
     PITCH_DELTA_PENALTY  =  -4.0   # per radian of pitch change
 
@@ -82,7 +82,8 @@ class RewardCalculator:
 
         # ── Yaw smoothness ──────────────────────────────────────────────
         yaw_delta = self._wrap_delta(current_yaw - prev_yaw)
-        reward += cfg.YAW_DELTA_PENALTY * abs(yaw_delta)
+        yaw_jerk  = self._wrap_delta(yaw_delta - prev_yaw_delta)
+        reward += cfg.YAW_JERK_PENALTY * abs(yaw_jerk)
 
         # ── Chassis stability (roll/pitch) ──────────────────────────────
         roll_delta = self._wrap_delta(current_roll - prev_roll)
