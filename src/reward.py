@@ -65,6 +65,7 @@ class RewardCalculator:
         car_pos, goal_pos, obstacle_pos, has_obstacle,
         prev_dist_to_goal, dist_to_goal, reached_goal,
         prev_yaw=0.0, current_yaw=0.0,
+        prev_yaw_delta=0.0,
         prev_roll=0.0, current_roll=0.0,
         prev_pitch=0.0, current_pitch=0.0,
         obstacle_positions=None, scenario="phase1",
