@@ -10,6 +10,7 @@ from simple_driving.resources.car import Car
 from simple_driving.resources.plane import Plane
 from simple_driving.resources.goal import Goal
 from simple_driving.resources.ramp import Ramp
+from src.reward import RewardCalculator
 
 
 class RallyDrivingEnv(SimpleDrivingEnv):
@@ -272,7 +273,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             scenario=self.scenario,
         )
 
-        current_yaw_delta = self._wrap_yaw_delta(yaw - self.prev_yaw)
+        current_yaw_delta = RewardCalculator._wrap_delta(yaw - self.prev_yaw)
         self.prev_yaw_delta = current_yaw_delta
         self.prev_yaw = yaw
         self.prev_roll = roll
