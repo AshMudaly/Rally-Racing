@@ -77,26 +77,36 @@ RAMP_POSITIONS    = [(10, 9, math.radians(-30)), ...]
 cd src
 python3 train.py
 ```
-Trains for 500k steps using 8 parallel environments. Saves intermediate checkpoints to `models/` every 10k steps and the best-evaluated model to `models/best/best_model.zip`.
+Trains using 8 parallel environments. Saves `models/resume.zip` atomically every 10k steps for crash recovery, and the best-evaluated model to `models/best/best_model.zip`.
 
 ### Configuration
 Edit the top of `src/train.py`:
 ```python
-TOTAL_TIMESTEPS = 500_000     # how long to train
-N_ENVS          = 8          # parallel envs (reduce if low on RAM)
+TOTAL_TIMESTEPS = 300_000     # steps per phase (increase for longer runs)
+N_ENVS          = 8           # parallel envs (reduce if low on RAM)
 SCENARIO        = "phase1"    # which scenario to train on
 LOAD_PREVIOUS   = True        # resume from models/resume.zip if it exists
 RESET_TIMESTEPS = False       # True = each run shows separately in TensorBoard
+
+# Network size — expanded from SB3 default [64, 64] for better value estimation
+PPO_KWARGS = dict(
+    learning_rate = 3e-4,
+    n_steps       = 512,
+    batch_size    = 256,
+    ent_coef      = 0.01,
+    device        = "cpu",
+    policy_kwargs = dict(net_arch=[256, 256]),
+)
 ```
 
-### Curriculum learning (recommended for phase3)
+### Curriculum learning (recommended)
 Training phase3 from scratch is hard — too many things to learn at once. Train progressively:
 
-1. Set `SCENARIO = "phase1"` and run until reward plateaus (~500k steps)
-2. Change to `SCENARIO = "phase2"`, keep `LOAD_PREVIOUS = True`, train another 300k
-3. Change to `SCENARIO = "phase3"`, train another 500k
+1. Set `SCENARIO = "phase1"`, `LOAD_PREVIOUS = False`, run for ~300k steps until reward plateaus
+2. Change to `SCENARIO = "phase2"`, `LOAD_PREVIOUS = True`, train another 200k
+3. Change to `SCENARIO = "phase3"`, `LOAD_PREVIOUS = True`, train another 200k
 
-Each phase starts from the weights of the previous one.
+Each phase starts from the weights of the previous one. Expect a brief reward dip when switching phases — this is normal as the policy adapts to the harder environment.
 
 ### Starting completely fresh
 ```bash
@@ -111,8 +121,9 @@ tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
 ```
 Open http://localhost:6006. Key metrics:
 - `rollout/ep_rew_mean` — average episode reward (should trend up)
-- `rollout/ep_len_mean` — average episode length
+- `rollout/ep_len_mean` — average episode length (should trend down as agent gets faster)
 - `eval/mean_reward` — score on the eval env (updated every 10k steps)
+- `train/explained_variance` — how well the value network predicts returns; target >0.7
 
 ## Evaluation
 
@@ -136,16 +147,19 @@ All weights live in `src/reward.py` under `RewardConfig`. Edit them to shape beh
 
 | Component | Sign | Default | Purpose |
 |-----------|------|---------|---------|
-| `GOAL_REWARD`       | + | +100 | Hitting a checkpoint |
-| `STEP_PENALTY`      | − | −0.5 | Per-step cost (encourages speed) |
-| `PROGRESS_SCALE`    | + | 3.0  | Multiplier on closing distance to goal |
-| `YAW_DELTA_PENALTY` | − | −5   | Per radian of heading change |
-| `ROLL_DELTA_PENALTY`| − | −15  | Penalises chassis tilt |
-| `PITCH_DELTA_PENALTY`| −| −4   | Penalises front-back tilt |
-| `OBSTACLE_PENALTY`  | − | −100 | Within `MIN_SAFE_DISTANCE` of any obstacle |
-| `REPULSE_SCALE`     | − | 10   | Soft penalty inside `REPULSE_RADIUS` |
-| `OUT_OF_BOUNDS`     | − | −50  | Outside `WORLD_BOUNDARY` |
-| `AIRBORNE_BONUS`    | ± | +1   | Per step while pitched up and making progress (phase3) |
+| `GOAL_REWARD`        | + | +100 | Hitting a checkpoint |
+| `STEP_PENALTY`       | − | −0.5 | Per-step cost (encourages speed) |
+| `PROGRESS_SCALE`     | + | 3.0  | Multiplier on closing distance to goal |
+| `YAW_JERK_PENALTY`   | − | −5   | Per radian of yaw *rate change* — penalises oscillation, not cornering |
+| `ROLL_DELTA_PENALTY` | − | −15  | Penalises chassis tilt |
+| `PITCH_DELTA_PENALTY`| − | −4   | Penalises front-back tilt |
+| `OBSTACLE_PENALTY`   | − | −100 | Within `MIN_SAFE_DISTANCE` of any obstacle |
+| `REPULSE_SCALE`      | − | 10   | Soft penalty inside `REPULSE_RADIUS` |
+| `OUT_OF_BOUNDS`      | − | −50  | Outside `WORLD_BOUNDARY` |
+| `AIRBORNE_BONUS`     | ± | +1   | Per step while pitched up and making progress (phase3) |
+
+### Yaw jerk vs yaw delta
+The swerve penalty targets the *rate of change* of heading (jerk), not the heading change itself. This means smooth cornering is unpunished — the agent can turn freely — but rapid oscillation back and forth is penalised each step. This is a more precise signal than a raw heading-change penalty.
 
 ### Tuning the jump tradeoff
 The `AIRBORNE_BONUS` controls whether the agent treats ramps as opportunities or hazards:
@@ -169,9 +183,9 @@ ls simple_driving/resources/*.urdf
 ```
 zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
 ```
-The training script handles this automatically — moves the bad file to `resume.zip.broken` and starts fresh. To manually recover from an older checkpoint:
+The training script handles this automatically — moves the bad file to `resume.zip.broken` and starts fresh. To manually recover, use the best model:
 ```bash
-cp models/ppo_rally_50000_steps.zip models/resume.zip
+cp models/best/best_model.zip models/resume.zip
 python3 -c "import zipfile; print(zipfile.ZipFile('models/resume.zip').testzip())"
 # Prints None if the zip is valid
 ```
@@ -185,7 +199,7 @@ Early in training the agent often learns to sit still to avoid the obstacle pena
 - Increase `PROGRESS_SCALE`
 
 ### Agent Drives in Circles
-Usually means yaw penalty is too low relative to progress reward. Increase `YAW_DELTA_PENALTY` magnitude (from −5 to −10 or more).
+Usually means the yaw jerk penalty is too low relative to the progress reward. Increase `YAW_JERK_PENALTY` magnitude (from −5 to −10 or more).
 
 ### Agent Crashes Into Every Obstacle
 The obstacle repulsion field hasn't built a strong enough gradient. Try:
