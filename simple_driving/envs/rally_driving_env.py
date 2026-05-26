@@ -229,11 +229,10 @@ class RallyDrivingEnv(SimpleDrivingEnv):
                     self.done = True
                     break
 
-            if self._termination():
-                self.done = True
-                break
+        self._envStepCounter += 1      # ← moved outside, increments once per step() call
 
-            self._envStepCounter += 1
+        if self._termination():
+            self.done = True
 
         car_pos, car_orn = self._p.getBasePositionAndOrientation(self.car.car)
         pitch, roll, yaw = self._p.getEulerFromQuaternion(car_orn)
@@ -359,6 +358,4 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         lap_complete  = self.current_checkpoint_idx >= len(self.checkpoints)
         out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
         result = self._envStepCounter > 500 or lap_complete or out_of_bounds
-        if result:
-            print(f"_termination at step={self._envStepCounter} lap={lap_complete} oob={out_of_bounds} pos={car_pos[:2]}")
         return result

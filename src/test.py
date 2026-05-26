@@ -12,13 +12,14 @@ import argparse
 import os
 import sys
 import time
+import simple_driving  # registers RallyDriving-v0
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
 
 import gymnasium as gym
-import simple_driving
+import numpy as np
 from stable_baselines3 import PPO
 
 from reward import custom_reward
@@ -41,37 +42,40 @@ def evaluate(model_path: str, scenarios: list[str], render: bool = True):
     for i, scenario in enumerate(scenarios):
         print(f"\n--- Scenario {i + 1}/{len(scenarios)}: {scenario.upper()} ---")
 
-        env = gym.make(
-            "RallyDriving-v0",
-            renders=render,
-            isDiscrete=False,
-            reward_callback=custom_reward,
-            observation_callback=None,
-            scenario=scenario,
-        )
-        model = PPO.load(model_path, env=env)
+    env = gym.make(
+        "RallyDriving-v0",
+        renders=render,
+        isDiscrete=False,
+        reward_callback=custom_reward,
+        observation_callback=None,
+        scenario=scenario,
+    )
 
-        obs, _ = env.reset()
-        done = False
-        total_reward = 0.0
-        steps = 0
+    # Load without passing env — avoids PPO wrapping it in DummyVecEnv
+    model = PPO.load(model_path)
 
-        while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, _ = env.step(action)
-            total_reward += reward
-            steps += 1
-            done = terminated or truncated
-            if render:
-                time.sleep(0.005)
+    obs, _ = env.reset()
+    done = False
+    total_reward = 0.0
+    steps = 0
 
-        unwrapped = env.unwrapped
-        completed = unwrapped.current_checkpoint_idx
-        total = len(unwrapped.checkpoints)
-        print(f"  Reward: {total_reward:+.2f}   Steps: {steps}   "
-              f"Checkpoints: {completed}/{total}")
+    while not done:
+        # Reshape obs for model — expects (1, obs_dim)
+        action, _ = model.predict(obs[np.newaxis, :], deterministic=True)
+        action = action[0]  # unwrap from batch dimension
+        obs, reward, terminated, truncated, _ = env.step(action)
+        total_reward += reward
+        steps += 1
+        done = terminated or truncated
+        if render:
+            time.sleep(0.005)
 
-        env.close()
+    unwrapped = env.unwrapped
+    completed = unwrapped.current_checkpoint_idx
+    total = len(unwrapped.checkpoints)
+    print(f"  Reward: {total_reward:+.2f}   Steps: {steps}   "
+          f"Checkpoints: {completed}/{total}")
+    env.close()
 
 
 def main():
