@@ -49,8 +49,8 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 # ── Hyperparameters ───────────────────────────────────────────────────────
 TOTAL_TIMESTEPS    = 200_000
 N_ENVS             = 8
-SCENARIO           = "phase3"           # phase1 / phase2 / phase3
-LOAD_PREVIOUS      = True
+SCENARIO           = "phase1"           # phase1 / phase2 / phase3
+LOAD_PREVIOUS      = False
 RESET_TIMESTEPS    = False             # set True to see each run as separate in TB
 
 PPO_KWARGS = dict(
