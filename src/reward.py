@@ -29,12 +29,12 @@ class RewardConfig:
     WORLD_BOUNDARY    =  30.0    # half-extent of the play area
 
     # ── Per-step shaping ───────────────────────────────────────────────
-    STEP_PENALTY        =  -0.5
-    PROGRESS_SCALE      =   3.0    # multiplier on (prev_dist - dist)
+    STEP_PENALTY        =  -2.0
+    PROGRESS_SCALE      =   5.0    # multiplier on (prev_dist - dist)
     REGRESSION_PENALTY  =  -5.0    # extra penalty when moving away from goal
 
     # ── Smooth driving ─────────────────────────────────────────────────
-    YAW_JERK_PENALTY    =  -5.0   # per radian of yaw change
+    YAW_JERK_PENALTY    =  -1.0   # per radian of yaw change
     ROLL_DELTA_PENALTY   = -15.0   # per radian of roll change (chassis tilt)
     PITCH_DELTA_PENALTY  =  -4.0   # per radian of pitch change
 
