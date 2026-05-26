@@ -236,10 +236,10 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             car_pos[1] - current_goal[1],
         )
 
-        out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
-        if self.done:
-            print(f"Episode ended at step {self._envStepCounter}, pos={car_pos[:2]}, oob={out_of_bounds}")
-            
+        # out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
+        # if self.done:
+        #     print(f"Episode ended at step {self._envStepCounter}, pos={car_pos[:2]}, oob={out_of_bounds}")
+
         # Checkpoint logic
         self.reached_goal = False
         if dist_to_goal < self.CHECKPOINT_RADIUS:

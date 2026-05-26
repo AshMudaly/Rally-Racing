@@ -134,7 +134,7 @@ def make_callbacks(eval_env):
             eval_env,
             best_model_save_path=BEST_DIR,
             log_path=LOG_DIR,
-            eval_freq=10_000 // N_ENVS,
+            eval_freq=20_000 // N_ENVS,
             n_eval_episodes=3,
             deterministic=True,
             verbose=1,
