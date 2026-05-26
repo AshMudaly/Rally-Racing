@@ -62,7 +62,8 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     OBSTACLE_COLLISION_RADIUS = 0.7
 
     def __init__(self, isDiscrete=False, renders=False,
-                 reward_callback=None, observation_callback=None):
+                reward_callback=None, observation_callback=None,
+                scenario="phase1"):
         super().__init__(
             isDiscrete=isDiscrete,
             renders=renders,
@@ -97,6 +98,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.prev_roll = 0.0
         self.prev_pitch = 0.0
         self.prev_yaw_delta = 0.0
+        self.scenario = scenario
         self.checkpoints = []
         self.checkpoint_objects = []
         self.current_checkpoint_idx = 0
