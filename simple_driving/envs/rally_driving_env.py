@@ -356,6 +356,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
 
     def _termination(self):
         car_pos, _ = self._p.getBasePositionAndOrientation(self.car.car)
-        lap_complete = self.current_checkpoint_idx >= len(self.checkpoints)
+        lap_complete  = self.current_checkpoint_idx >= len(self.checkpoints)
         out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
-        return self._envStepCounter > 500 or lap_complete or out_of_bounds
+        result = self._envStepCounter > 500 or lap_complete or out_of_bounds
+        if result:
+            print(f"_termination at step={self._envStepCounter} lap={lap_complete} oob={out_of_bounds} pos={car_pos[:2]}")
+        return result
