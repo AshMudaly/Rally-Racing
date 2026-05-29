@@ -49,13 +49,12 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 # ── Hyperparameters ───────────────────────────────────────────────────────
 TOTAL_TIMESTEPS    = 300_000
 N_ENVS             = 8
-SCENARIO           = "phase1"           # phase1 / phase2 / phase3
-LOAD_PREVIOUS      = False
-RESET_TIMESTEPS    = True             # set True to see each run as separate in TB
+SCENARIO           = "phase3"           # phase1 / phase2 / phase3
+LOAD_PREVIOUS      = True          # set True to load resume.zip if it exists
+RESET_TIMESTEPS    = False        # set True to see each run as separate in TB
 
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
-    n_steps       = 512,
     batch_size    = 256,
     ent_coef      = 0.01,
     device        = "cpu",

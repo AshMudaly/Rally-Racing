@@ -31,12 +31,19 @@ class RewardConfig:
     # ── Per-step shaping ───────────────────────────────────────────────
     STEP_PENALTY        =  -2.0
     PROGRESS_SCALE      =   5.0    # multiplier on (prev_dist - dist)
-    REGRESSION_PENALTY  =  -5.0    # extra penalty when moving away from goal
+    # FIX: regression penalty now fires unconditionally on backward movement,
+    # not only when near an obstacle. Previously the guard meant phase1 had
+    # zero regression penalty, letting the agent zigzag freely.
+    REGRESSION_PENALTY  = -10.0
 
     # ── Smooth driving ─────────────────────────────────────────────────
-    YAW_JERK_PENALTY    =  -1.0   # per radian of yaw change
-    ROLL_DELTA_PENALTY   = -15.0   # per radian of roll change (chassis tilt)
-    PITCH_DELTA_PENALTY  =  -4.0   # per radian of pitch change
+    # FIX: raised from -1.0 to -8.0. At -1.0 even tiny forward progress
+    # (~0.2 units/step * PROGRESS_SCALE=5 = +1.0) outweighed the jerk
+    # penalty, making oscillation profitable. At -8.0 the agent must
+    # maintain a straight line to earn positive reward.
+    YAW_JERK_PENALTY    =  -8.0   # per radian of yaw rate change
+    ROLL_DELTA_PENALTY  = -15.0   # per radian of roll change (chassis tilt)
+    PITCH_DELTA_PENALTY =  -4.0   # per radian of pitch change
 
     # ── Obstacle handling ──────────────────────────────────────────────
     MIN_SAFE_DISTANCE     = 1.0    # closer than this is a "hit"
@@ -77,6 +84,12 @@ class RewardCalculator:
         progress = (prev_dist_to_goal - dist_to_goal) if prev_dist_to_goal is not None else 0.0
         reward += cfg.STEP_PENALTY + cfg.PROGRESS_SCALE * progress
 
+        # ── Regression: penalise moving away from goal (all scenarios) ──
+        # FIX: removed has_obstacle guard — regression must fire in phase1
+        # too, otherwise the agent has no cost for zigzagging.
+        if progress < 0:
+            reward += cfg.REGRESSION_PENALTY
+
         # ── Checkpoint reached ──────────────────────────────────────────
         if reached_goal:
             reward += cfg.GOAL_REWARD
@@ -87,7 +100,7 @@ class RewardCalculator:
         reward += cfg.YAW_JERK_PENALTY * abs(yaw_jerk)
 
         # ── Chassis stability (roll/pitch) ──────────────────────────────
-        roll_delta = self._wrap_delta(current_roll - prev_roll)
+        roll_delta  = self._wrap_delta(current_roll - prev_roll)
         pitch_delta = self._wrap_delta(current_pitch - prev_pitch)
         reward += cfg.ROLL_DELTA_PENALTY * abs(roll_delta)
         reward += cfg.PITCH_DELTA_PENALTY * abs(pitch_delta)
@@ -99,9 +112,6 @@ class RewardCalculator:
             )
             if dist_to_obs <= cfg.MIN_SAFE_DISTANCE:
                 reward += cfg.OBSTACLE_PENALTY
-            # Regression: moving away from goal while not actively avoiding
-            if progress < 0 and dist_to_obs > dist_to_goal:
-                reward += cfg.REGRESSION_PENALTY
 
         # ── Obstacle repulsive field (all obstacles) ────────────────────
         if obstacle_positions:
@@ -115,8 +125,6 @@ class RewardCalculator:
             reward += cfg.OUT_OF_BOUNDS
 
         # ── Airborne bonus (phase 3 jumps) ──────────────────────────────
-        # Brief pitch-up off a ramp => "landed the jump". Only counts if
-        # the agent is actively making progress (don't reward backflipping).
         if scenario == "phase3" and current_pitch > cfg.AIRBORNE_PITCH_THRESHOLD and progress > 0:
             reward += cfg.AIRBORNE_BONUS
 
@@ -133,9 +141,6 @@ class RewardCalculator:
 
 
 # ── Module-level callable for env.reward_callback ──────────────────────
-# RallyDrivingEnv expects a plain callable; instantiating once at import
-# is the simplest interface.
-
 _default_calculator = RewardCalculator()
 
 

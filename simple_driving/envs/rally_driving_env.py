@@ -62,9 +62,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     ]
 
     # ── Tunables ───────────────────────────────────────────────────────
-    CHECKPOINT_RADIUS       = 1.5
-    OBSTACLE_DRIFT_MAX      = 0.05
-    OBSTACLE_DRIFT_RADIUS   = 2.0
+    CHECKPOINT_RADIUS         = 1.5
+    OBSTACLE_DRIFT_MAX        = 0.05
+    OBSTACLE_DRIFT_RADIUS     = 2.0
     OBSTACLE_COLLISION_RADIUS = 0.7
 
     def __init__(self, isDiscrete=False, renders=False,
@@ -99,17 +99,15 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             ], dtype=np.float32),
         )
 
-        # Scenario set at construction — does not change per episode
         self.scenario = scenario
 
-        # Episode state
         self.prev_yaw       = 0.0
         self.prev_roll      = 0.0
         self.prev_pitch     = 0.0
         self.prev_yaw_delta = 0.0
 
-        self.checkpoints          = []
-        self.checkpoint_objects   = []
+        self.checkpoints            = []
+        self.checkpoint_objects     = []
         self.current_checkpoint_idx = 0
 
         self.obstacle_objects   = []
@@ -117,7 +115,6 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.obstacle_homes     = []
         self.ramp_objects       = []
 
-        # Keep parent attributes initialised so wrappers don't crash
         self.has_obstacle  = False
         self.obstacle_pos  = None
         self.goal_object   = None
@@ -126,7 +123,6 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     # ── Reset ──────────────────────────────────────────────────────────
 
     def reset(self, seed=None, options=None):
-        # Call gym.Env.reset directly — skip SimpleDrivingEnv.reset entirely
         super(SimpleDrivingEnv, self).reset(seed=seed)
 
         self._p.resetSimulation()
@@ -139,7 +135,6 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.done            = False
         self.reached_goal    = False
 
-        # Clear per-episode state
         self.obstacle_objects   = []
         self.obstacle_positions = []
         self.obstacle_homes     = []
@@ -147,24 +142,20 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.has_obstacle       = False
         self.obstacle_pos       = None
 
-        # Spawn scenario elements
         if self.scenario == "phase2":
             self._spawn_obstacles()
         elif self.scenario == "phase3":
             self._spawn_obstacles()
             self._spawn_ramps()
 
-        # Checkpoints
         checkpoints = options.get("checkpoints", None) if options else None
         self.checkpoints = checkpoints if checkpoints is not None else self.CHECKPOINTS
         self.checkpoint_objects = [Goal(self._p, pos) for pos in self.checkpoints]
         self.current_checkpoint_idx = 0
 
-        # Keep parent goal attributes in sync so wrappers don't crash on None
         self.goal_object = self.checkpoint_objects[0]
         self.goal        = self.checkpoints[0]
 
-        # Initial distances and orientations
         car_pos = self.car.get_observation()
         self.prev_dist_to_goal = math.hypot(
             car_pos[0] - self.checkpoints[0][0],
@@ -180,8 +171,8 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     # ── Spawn helpers ──────────────────────────────────────────────────
 
     def _spawn_obstacles(self):
-        self.has_obstacle    = True
-        self.obstacle_homes  = list(self.OBSTACLE_HOMES)
+        self.has_obstacle       = True
+        self.obstacle_homes     = list(self.OBSTACLE_HOMES)
         self.obstacle_positions = list(self.OBSTACLE_HOMES)
 
         for home in self.obstacle_homes:
@@ -214,22 +205,30 @@ class RallyDrivingEnv(SimpleDrivingEnv):
 
         self.car.apply_action(action)
         nearest_obstacle = None
+        collision = False
 
         for _ in range(self._actionRepeat):
             self._p.stepSimulation()
             if self._renders:
                 time.sleep(self._timeStep)
 
-            car_pos, car_orn = self._p.getBasePositionAndOrientation(self.car.car)
-
             if self.obstacle_objects:
-                self._wiggle_obstacles()
+                car_pos, _ = self._p.getBasePositionAndOrientation(self.car.car)
                 nearest_obstacle, nearest_dist = self._nearest_obstacle(car_pos)
                 if nearest_dist < self.OBSTACLE_COLLISION_RADIUS:
-                    self.done = True
+                    collision = True
                     break
 
-        self._envStepCounter += 1      # ← moved outside, increments once per step() call
+        # FIX: wiggle once per step(), not once per substep.
+        # Previously inside the loop above — caused ~50 nudges per step,
+        # making obstacles vibrate visibly instead of drifting slowly.
+        if self.obstacle_objects:
+            self._wiggle_obstacles()
+
+        if collision:
+            self.done = True
+
+        self._envStepCounter += 1
 
         if self._termination():
             self.done = True
@@ -243,7 +242,6 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             car_pos[1] - current_goal[1],
         )
 
-        # Checkpoint logic
         self.reached_goal = False
         if dist_to_goal < self.CHECKPOINT_RADIUS:
             self.reached_goal = True
@@ -258,7 +256,6 @@ class RallyDrivingEnv(SimpleDrivingEnv):
                 )
                 self.prev_dist_to_goal = dist_to_goal
                 current_goal = next_goal
-                # Keep parent attribute in sync
                 self.goal_object = self.checkpoint_objects[self.current_checkpoint_idx]
                 self.goal        = current_goal
 
@@ -357,5 +354,4 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         car_pos, _ = self._p.getBasePositionAndOrientation(self.car.car)
         lap_complete  = self.current_checkpoint_idx >= len(self.checkpoints)
         out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
-        result = self._envStepCounter > 500 or lap_complete or out_of_bounds
-        return result
+        return self._envStepCounter > 500 or lap_complete or out_of_bounds
