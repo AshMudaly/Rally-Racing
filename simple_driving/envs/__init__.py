@@ -1,2 +1,3 @@
 from simple_driving.envs.simple_driving_env import SimpleDrivingEnv
 from simple_driving.envs.rally_driving_env import RallyDrivingEnv
+from simple_driving.envs.vision_rally_env import VisionRallyDrivingEnv

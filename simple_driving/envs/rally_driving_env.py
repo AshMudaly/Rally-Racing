@@ -44,10 +44,10 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     # ── Camera (car-mounted, yaw-following) ────────────────────────────
     CAM_WIDTH      = 84
     CAM_HEIGHT     = 84
-    CAM_FOV        = 70.0
-    CAM_EYE_HEIGHT = 0.30   # camera height above car origin (m)
+    CAM_FOV        = 55.0
+    CAM_EYE_HEIGHT = 0.50   # camera height above car origin (m)
     CAM_EYE_FWD    = 0.30   # forward offset from car origin (m)
-    CAM_TARGET_FWD = 5.0    # look-at point distance ahead (m)
+    CAM_TARGET_FWD = 4.0    # look-at point distance ahead (m)
     CAM_NEAR       = 0.05
     CAM_FAR        = 50.0
 
@@ -349,7 +349,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         cam_target = [
             car_pos[0] + self.CAM_TARGET_FWD * cos_y,
             car_pos[1] + self.CAM_TARGET_FWD * sin_y,
-            car_pos[2] + 0.1,
+            car_pos[2] - 0.1,    # was +0.1 — now looks slightly downward
         ]
 
         view = self._p.computeViewMatrix(

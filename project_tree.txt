@@ -1,0 +1,49 @@
+.
+├── data
+│   ├── vision_dataset.npz
+│   └── vision_sample.png
+├── project_tree.txt
+├── README.md
+├── requirements.txt
+├── setup.py
+├── simple_driving
+│   ├── envs
+│   │   ├── __init__.py
+│   │   ├── __pycache__
+│   │   ├── rally_driving_env.py
+│   │   └── simple_driving_env.py
+│   ├── __init__.py
+│   ├── __pycache__
+│   └── resources
+│       ├── car.py
+│       ├── goal.py
+│       ├── __init__.py
+│       ├── obstacle.py
+│       ├── plane.py
+│       ├── __pycache__
+│       ├── ramp.py
+│       ├── simplecar.urdf
+│       ├── simplegoal.urdf
+│       └── simpleplane.urdf
+├── src
+│   ├── camera_check.png
+│   ├── capture_test.py
+│   ├── observation.py
+│   ├── __pycache__
+│   ├── reward.py
+│   ├── test.py
+│   ├── train.py
+│   └── wandb
+│       ├── debug-internal.log -> run-20260529_132140-v9jsucxv/logs/debug-internal.log
+│       ├── debug.log -> run-20260529_132140-v9jsucxv/logs/debug.log
+│       ├── latest-run -> run-20260529_132140-v9jsucxv
+│       └── run-20260529_132140-v9jsucxv
+└── vision
+    ├── cnn_obstacle.pt
+    ├── collect_data.py
+    ├── inspect_data.py
+    ├── model.py
+    ├── __pycache__
+    └── train_cnn.py
+
+14 directories, 32 files

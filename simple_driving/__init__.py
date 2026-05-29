@@ -11,3 +11,9 @@ register(
     entry_point='simple_driving.envs:RallyDrivingEnv',
     max_episode_steps=None,
 )
+
+register(
+    id='VisionRallyDriving-v0',
+    entry_point='simple_driving.envs:VisionRallyDrivingEnv',
+    max_episode_steps=None,
+)
