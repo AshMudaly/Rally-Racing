@@ -1,0 +1,186 @@
+_current_progress_remaining:
+    value: -0.012243765391418915
+_custom_logger:
+    value: "True"
+_episode_num:
+    value: 0
+_last_episode_starts:
+    value: '[ True  True  True  True  True  True  True  True]'
+_last_obs:
+    value: |-
+        [[16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]
+         [16. 16.  1.  0.  8.  1.  0. -0.  0.  1.  0.]]
+_last_original_obs:
+    value: None
+_logger:
+    value: <stable_baselines3.common.logger.Logger object at 0x76aab0cd1f90>
+_n_updates:
+    value: 570
+_num_timesteps_at_start:
+    value: 933888
+_stats_window_size:
+    value: 100
+_total_timesteps:
+    value: 1233888
+_vec_normalize_env:
+    value: None
+_wandb:
+    value:
+        cli_version: 0.27.0
+        code_path: code/src/train.py
+        e:
+            m0q8h3wsue3obu3fgkrphli5h7gi9twg:
+                codePath: src/train.py
+                codePathLocal: train.py
+                cpu_count: 6
+                cpu_count_logical: 12
+                disk:
+                    /:
+                        total: "29348499456"
+                        used: "22269775872"
+                email: ashanthan.a.mudaly@student.uts.edu.au
+                executable: /usr/bin/python3
+                git:
+                    commit: abd1a5e8b282a0508cd1931afa956f845028c3f0
+                    remote: https://github.com/AshMudaly/Rally-Racing.git
+                host: ashmu-laptop
+                memory:
+                    total: "32919748608"
+                os: Linux-6.8.0-124-generic-x86_64-with-glibc2.35
+                program: /home/ashmu/41118_ws/project/Rally-Racing/src/train.py
+                python: CPython 3.10.12
+                root: /home/ashmu/41118_ws/project/Rally-Racing/src
+                startedAt: "2026-05-29T03:21:40.442560Z"
+                writerId: m0q8h3wsue3obu3fgkrphli5h7gi9twg
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 2
+                - 13
+                - 16
+                - 22
+                - 35
+            "4": 3.10.12
+            "5": 0.27.0
+            "12": 0.27.0
+            "13": linux-x86_64
+action_noise:
+    value: None
+action_space:
+    value: Box([-1.  -0.6], [1.  0.6], (2,), float32)
+algo:
+    value: PPO
+batch_size:
+    value: 256
+clip_range:
+    value: FloatSchedule(ConstantSchedule(val=0.2))
+clip_range_vf:
+    value: None
+device:
+    value: cpu
+ent_coef:
+    value: 0.01
+env:
+    value: <stable_baselines3.common.vec_env.subproc_vec_env.SubprocVecEnv object at 0x76aad3d4ba60>
+ep_info_buffer:
+    value: deque([], maxlen=100)
+ep_success_buffer:
+    value: deque([], maxlen=100)
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.99
+learning_rate:
+    value: 0.0003
+lr_schedule:
+    value: FloatSchedule(ConstantSchedule(val=0.0003))
+max_grad_norm:
+    value: 0.5
+n_envs:
+    value: 8
+n_epochs:
+    value: 10
+n_steps:
+    value: 2048
+normalize_advantage:
+    value: "True"
+num_timesteps:
+    value: 933888
+observation_space:
+    value: |-
+        Box([-40.        -40.          0.        -40.        -40.          0.
+          -3.1415927  -3.1415927 -30.         -1.         -1.       ], [40.        40.         1.        40.        40.         1.
+          3.1415927  3.1415927 30.         1.         1.       ], (11,), float32)
+policy:
+    value: |-
+        ActorCriticPolicy(
+          (features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (pi_features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (vf_features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (mlp_extractor): MlpExtractor(
+            (policy_net): Sequential(
+              (0): Linear(in_features=11, out_features=256, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): Tanh()
+            )
+            (value_net): Sequential(
+              (0): Linear(in_features=11, out_features=256, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): Tanh()
+            )
+          )
+          (action_net): Linear(in_features=256, out_features=2, bias=True)
+          (value_net): Linear(in_features=256, out_features=1, bias=True)
+        )
+policy_class:
+    value: <class 'stable_baselines3.common.policies.ActorCriticPolicy'>
+policy_kwargs:
+    value:
+        net_arch:
+            - 256
+            - 256
+rollout_buffer:
+    value: <stable_baselines3.common.buffers.RolloutBuffer object at 0x76aab0cd1c60>
+rollout_buffer_class:
+    value: <class 'stable_baselines3.common.buffers.RolloutBuffer'>
+rollout_buffer_kwargs:
+    value: '{}'
+scenario:
+    value: phase3
+sde_sample_freq:
+    value: -1
+seed:
+    value: None
+start_time:
+    value: 1780024907705165817
+target_kl:
+    value: None
+tensorboard_log:
+    value: /home/ashmu/41118_ws/project/Rally-Racing/logs
+total_timesteps:
+    value: 300000
+use_sde:
+    value: "False"
+verbose:
+    value: 1
+vf_coef:
+    value: 0.5

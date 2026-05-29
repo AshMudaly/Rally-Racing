@@ -41,6 +41,16 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     OBS_VEL   = 30.0
     OBS_YAW   = 1.0
 
+    # ── Camera (car-mounted, yaw-following) ────────────────────────────
+    CAM_WIDTH      = 84
+    CAM_HEIGHT     = 84
+    CAM_FOV        = 70.0
+    CAM_EYE_HEIGHT = 0.30   # camera height above car origin (m)
+    CAM_EYE_FWD    = 0.30   # forward offset from car origin (m)
+    CAM_TARGET_FWD = 5.0    # look-at point distance ahead (m)
+    CAM_NEAR       = 0.05
+    CAM_FAR        = 50.0
+
     # ── Default course ─────────────────────────────────────────────────
     CHECKPOINTS = [
         ( 16,  16),
@@ -307,6 +317,57 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             if d < best[1]:
                 best = (pos, d)
         return best
+
+    # ── Camera ─────────────────────────────────────────────────────────
+
+    def get_camera_image(self, width=None, height=None):
+        """
+        Render an 84x84 RGB frame from a car-mounted, forward-looking camera.
+
+        The camera sits slightly above and ahead of the car origin and looks
+        along the car's current heading (yaw), so the view rotates with the
+        car — unlike a fixed world-frame camera. Returns a uint8 array of
+        shape (H, W, 3).
+
+        This method is purely additive: it does not touch step/reset/reward
+        or the observation vector, so it cannot affect existing training.
+        It is called externally (data collection, vision inference).
+        """
+        width  = width  if width  is not None else self.CAM_WIDTH
+        height = height if height is not None else self.CAM_HEIGHT
+
+        car_pos, car_orn = self._p.getBasePositionAndOrientation(self.car.car)
+        _, _, yaw = self._p.getEulerFromQuaternion(car_orn)
+
+        cos_y, sin_y = math.cos(yaw), math.sin(yaw)
+
+        cam_eye = [
+            car_pos[0] + self.CAM_EYE_FWD * cos_y,
+            car_pos[1] + self.CAM_EYE_FWD * sin_y,
+            car_pos[2] + self.CAM_EYE_HEIGHT,
+        ]
+        cam_target = [
+            car_pos[0] + self.CAM_TARGET_FWD * cos_y,
+            car_pos[1] + self.CAM_TARGET_FWD * sin_y,
+            car_pos[2] + 0.1,
+        ]
+
+        view = self._p.computeViewMatrix(
+            cameraEyePosition=cam_eye,
+            cameraTargetPosition=cam_target,
+            cameraUpVector=[0, 0, 1],
+        )
+        proj = self._p.computeProjectionMatrixFOV(
+            fov=self.CAM_FOV,
+            aspect=float(width) / height,
+            nearVal=self.CAM_NEAR,
+            farVal=self.CAM_FAR,
+        )
+        _, _, px, _, _ = self._p.getCameraImage(
+            width=width, height=height,
+            viewMatrix=view, projectionMatrix=proj,
+        )
+        return np.array(px, dtype=np.uint8).reshape(height, width, 4)[:, :, :3]
 
     # ── Observation ────────────────────────────────────────────────────
 
