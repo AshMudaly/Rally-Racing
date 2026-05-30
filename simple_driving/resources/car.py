@@ -37,6 +37,7 @@ class Car:
         )
 
         friction = -self.joint_speed * (self.joint_speed * self.c_drag + self.c_rolling)
+        friction = max(min(friction, 1e6), -1e6)
         acceleration = self.c_throttle * throttle + friction
         self.joint_speed = min(self.joint_speed + 0.01 * acceleration, 40.0)
 

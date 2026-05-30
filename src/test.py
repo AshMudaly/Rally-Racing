@@ -38,44 +38,41 @@ def evaluate(model_path: str, scenarios: list[str], render: bool = True):
             sys.exit(f"No trained model found at {model_path} or {FALLBACK_MODEL}")
 
     print(f"Loading model from {model_path}")
+    model = PPO.load(model_path)
 
     for i, scenario in enumerate(scenarios):
         print(f"\n--- Scenario {i + 1}/{len(scenarios)}: {scenario.upper()} ---")
 
-    env = gym.make(
-        "RallyDriving-v0",
-        renders=render,
-        isDiscrete=False,
-        reward_callback=custom_reward,
-        observation_callback=None,
-        scenario=scenario,
-    )
+        env = gym.make(
+            "RallyDriving-v0",
+            renders=render,
+            isDiscrete=False,
+            reward_callback=custom_reward,
+            observation_callback=None,
+            scenario=scenario,
+        )
 
-    # Load without passing env — avoids PPO wrapping it in DummyVecEnv
-    model = PPO.load(model_path)
+        obs, _ = env.reset()
+        done = False
+        total_reward = 0.0
+        steps = 0
 
-    obs, _ = env.reset()
-    done = False
-    total_reward = 0.0
-    steps = 0
+        while not done:
+            action, _ = model.predict(obs[np.newaxis, :], deterministic=True)
+            action = action[0]
+            obs, reward, terminated, truncated, _ = env.step(action)
+            total_reward += reward
+            steps += 1
+            done = terminated or truncated
+            if render:
+                time.sleep(0.005)
 
-    while not done:
-        # Reshape obs for model — expects (1, obs_dim)
-        action, _ = model.predict(obs[np.newaxis, :], deterministic=True)
-        action = action[0]  # unwrap from batch dimension
-        obs, reward, terminated, truncated, _ = env.step(action)
-        total_reward += reward
-        steps += 1
-        done = terminated or truncated
-        if render:
-            time.sleep(0.005)
-
-    unwrapped = env.unwrapped
-    completed = unwrapped.current_checkpoint_idx
-    total = len(unwrapped.checkpoints)
-    print(f"  Reward: {total_reward:+.2f}   Steps: {steps}   "
-          f"Checkpoints: {completed}/{total}")
-    env.close()
+        unwrapped = env.unwrapped
+        completed = unwrapped.current_checkpoint_idx
+        total = len(unwrapped.checkpoints)
+        print(f"  Reward: {total_reward:+.2f}   Steps: {steps}   "
+              f"Checkpoints: {completed}/{total}")
+        env.close()
 
 
 def main():

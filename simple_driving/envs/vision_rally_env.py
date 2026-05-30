@@ -17,12 +17,6 @@ Observation slot mapping (unchanged from RallyDrivingEnv):
     [9] cos(yaw)              — privileged (proprioception)
     [10] sin(yaw)             — privileged (proprioception)
 
-Slots 0-2 stay privileged: the marker said a real rally car gets waypoints
-from a route map, not from recognising which cone is "next". Slots 6-10 are
-proprioceptive — no real car uses a camera for its own speed/orientation.
-Only the obstacle channel is genuinely a perception problem, so only that
-channel is replaced by vision.
-
 Physics and reward are UNCHANGED: collision detection still uses true
 obstacle positions internally. We are only replacing what the POLICY sees,
 not what the world does. This keeps the comparison clean.

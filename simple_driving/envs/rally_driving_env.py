@@ -29,6 +29,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         - phase1: bare track, just checkpoints
         - phase2: checkpoints + static cone obstacles to avoid
         - phase3: checkpoints + cones + ramps (jumps) for shortcuts
+        - custom: counter-clockwise oval, cone slalom + ramp/gap jumps
     """
 
     # ── Observation bounds ─────────────────────────────────────────────
@@ -69,6 +70,27 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     RAMP_POSITIONS = [
         (10, 9,  math.radians(-30)),
         (-8, 5,  math.radians(120)),
+    ]
+    
+    # ── Custom track (counter-clockwise oval, ~24m x 16m) ──────────────
+    CUSTOM_CHECKPOINTS = [
+        (  0, -14),   # CP1  start/finish, bottom center
+        (-16,  -2),   # CP2  cone slalom / big-radius left
+        (  0,  14),   # CP3  long straight, top
+        ( 14,   8),   # CP4  gentle right
+        ( 16,  -4),   # CP5  sweeping left
+        (  6, -14),   # CP6  back to finish
+    ]
+    CUSTOM_OBSTACLE_HOMES = [
+        (-10, -10),   # slalom cones, lower-left, staggered
+        (-13,  -7),
+        (-11,  -4),
+        (-15,  -1),
+    ]
+    CUSTOM_RAMP_POSITIONS = [
+        (10, -14, math.radians(0)),    # ramp jump on bottom straight
+        (-2, -14, math.radians(0)),    # gap: up-ramp
+        (-5, -14, math.radians(180)),  # gap: down-ramp (facing back)
     ]
 
     # ── Tunables ───────────────────────────────────────────────────────
@@ -152,14 +174,22 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.has_obstacle       = False
         self.obstacle_pos       = None
 
-        if self.scenario == "phase2":
+        if self.scenario == "custom":
+            self._obstacle_source   = self.CUSTOM_OBSTACLE_HOMES
+            self._ramp_source       = self.CUSTOM_RAMP_POSITIONS
+            self._checkpoint_source = self.CUSTOM_CHECKPOINTS
+        else:
+            self._obstacle_source   = self.OBSTACLE_HOMES
+            self._ramp_source       = self.RAMP_POSITIONS
+            self._checkpoint_source = self.CHECKPOINTS
+
+        if self.scenario in ("phase2", "custom"):
             self._spawn_obstacles()
-        elif self.scenario == "phase3":
-            self._spawn_obstacles()
+        if self.scenario in ("phase3", "custom"):
             self._spawn_ramps()
 
         checkpoints = options.get("checkpoints", None) if options else None
-        self.checkpoints = checkpoints if checkpoints is not None else self.CHECKPOINTS
+        self.checkpoints = checkpoints if checkpoints is not None else self._checkpoint_source
         self.checkpoint_objects = [Goal(self._p, pos) for pos in self.checkpoints]
         self.current_checkpoint_idx = 0
 
@@ -182,8 +212,8 @@ class RallyDrivingEnv(SimpleDrivingEnv):
 
     def _spawn_obstacles(self):
         self.has_obstacle       = True
-        self.obstacle_homes     = list(self.OBSTACLE_HOMES)
-        self.obstacle_positions = list(self.OBSTACLE_HOMES)
+        self.obstacle_homes     = list(self._obstacle_source)
+        self.obstacle_positions = list(self._obstacle_source)
 
         for home in self.obstacle_homes:
             vis = self._p.createVisualShape(
@@ -202,7 +232,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.obstacle_pos = self.obstacle_homes[0]
 
     def _spawn_ramps(self):
-        for (x, y, yaw) in self.RAMP_POSITIONS:
+        for (x, y, yaw) in self._ramp_source:
             self.ramp_objects.append(Ramp(self._p, (x, y), yaw=yaw))
 
     # ── Step ───────────────────────────────────────────────────────────

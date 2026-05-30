@@ -26,6 +26,7 @@ from stable_baselines3 import PPO
 
 import simple_driving  # registers VisionRallyDriving-v0
 from reward import custom_reward
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from vision import ObstacleCNN
 
 BASE_DIR    = os.path.abspath(os.path.join(HERE, ".."))
