@@ -75,18 +75,12 @@ def main():
     parser.add_argument("--scenario", default=SCENARIO)
     parser.add_argument("--n-envs", type=int, default=N_ENVS)
     parser.add_argument("--no-wandb", action="store_true")
-    parser.add_argument(
-        "--save-name", default=None,
-        help="Subpath under models/ to save into (e.g. 'vision/custom_8cp'). "
-             "Defaults to the scenario name.",
-    )
     args = parser.parse_args()
 
-    # Output paths: --save-name overrides, else fall back to scenario name.
-    save_name = args.save_name if args.save_name is not None else args.scenario
-    save_dir = os.path.join(BASE_DIR, "models", save_name)
+    # Per-scenario output paths, decided after we know the scenario.
+    save_dir = os.path.join(BASE_DIR, "models", args.scenario)
     best_dir = os.path.join(save_dir, "best")
-    log_dir  = os.path.join(BASE_DIR, "logs", f"{save_name.replace('/', '_')}_vision")
+    log_dir  = os.path.join(BASE_DIR, "logs", f"{args.scenario}_vision")
     for d in (save_dir, best_dir, log_dir):
         os.makedirs(d, exist_ok=True)
 
@@ -129,7 +123,7 @@ def main():
     # train/ and rollout/ scalars even though we loaded a saved model.
     if run is not None:
         from stable_baselines3.common.logger import configure
-        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
+        model.set_logger(configure(run.dir, ["stdout", "tensorboard"]))
     else:
         model.tensorboard_log = log_dir
 
@@ -167,7 +161,6 @@ def main():
         eval_env.close()
         if run is not None:
             run.finish()
-            
 
 
 if __name__ == "__main__":

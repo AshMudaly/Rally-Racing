@@ -1,0 +1,28 @@
+{
+  "os": "Linux-6.8.0-124-generic-x86_64-with-glibc2.35",
+  "python": "CPython 3.10.12",
+  "startedAt": "2026-05-31T04:49:50.672049Z",
+  "program": "/home/ashmu/41118_ws/project/Rally-Racing/src/train.py",
+  "codePath": "src/train.py",
+  "codePathLocal": "train.py",
+  "git": {
+    "remote": "https://github.com/AshMudaly/Rally-Racing.git",
+    "commit": "ef01df4bafbf28a08c846a6041298dd5a4c5277b"
+  },
+  "email": "ashanthan.a.mudaly@student.uts.edu.au",
+  "root": "/home/ashmu/41118_ws/project/Rally-Racing/src",
+  "host": "ashmu-laptop",
+  "executable": "/usr/bin/python3",
+  "cpu_count": 6,
+  "cpu_count_logical": 12,
+  "disk": {
+    "/": {
+      "total": "29348499456",
+      "used": "22590504960"
+    }
+  },
+  "memory": {
+    "total": "32919748608"
+  },
+  "writerId": "7ky2i64otnptl7j9o8o3il76j5sab8w3"
+}

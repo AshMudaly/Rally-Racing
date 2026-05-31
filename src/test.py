@@ -26,23 +26,16 @@ from reward import custom_reward
 
 BASE_DIR       = os.path.abspath(os.path.join(HERE, ".."))
 DEFAULT_MODEL  = os.path.join(BASE_DIR, "models", "best", "best_model.zip")
-FALLBACK_MODEL = os.path.join(BASE_DIR, "models", "resume.zip")
 
-
-def evaluate(model_path: str, scenarios: list[str], render: bool = True):
+def evaluate(model_path: str, scenarios: list[str], render: bool = True, episodes: int = 1):
     if not os.path.exists(model_path):
-        if os.path.exists(FALLBACK_MODEL):
-            print(f"{model_path} not found, falling back to {FALLBACK_MODEL}")
-            model_path = FALLBACK_MODEL
-        else:
-            sys.exit(f"No trained model found at {model_path} or {FALLBACK_MODEL}")
+        sys.exit(f"No model found at {model_path}")
 
     print(f"Loading model from {model_path}")
     model = PPO.load(model_path)
 
     for i, scenario in enumerate(scenarios):
-        print(f"\n--- Scenario {i + 1}/{len(scenarios)}: {scenario.upper()} ---")
-
+        print(f"\n--- Scenario {i + 1}/{len(scenarios)}: {scenario.upper()} ({episodes} eps) ---")
         env = gym.make(
             "RallyDriving-v0",
             renders=render,
@@ -52,28 +45,39 @@ def evaluate(model_path: str, scenarios: list[str], render: bool = True):
             scenario=scenario,
         )
 
-        obs, _ = env.reset()
-        done = False
-        total_reward = 0.0
-        steps = 0
+        rewards, step_counts, completions = [], [], []
+        for ep in range(episodes):
+            obs, _ = env.reset()
+            done = False
+            total_reward = 0.0
+            steps = 0
+            while not done:
+                action, _ = model.predict(obs[np.newaxis, :], deterministic=True)
+                action = action[0]
+                obs, reward, terminated, truncated, _ = env.step(action)
+                total_reward += reward
+                steps += 1
+                done = terminated or truncated
+                if render:
+                    time.sleep(0.005)
 
-        while not done:
-            action, _ = model.predict(obs[np.newaxis, :], deterministic=True)
-            action = action[0]
-            obs, reward, terminated, truncated, _ = env.step(action)
-            total_reward += reward
-            steps += 1
-            done = terminated or truncated
-            if render:
-                time.sleep(0.005)
+            unwrapped = env.unwrapped
+            completed = unwrapped.current_checkpoint_idx
+            total = len(unwrapped.checkpoints)
+            rewards.append(total_reward)
+            step_counts.append(steps)
+            completions.append(completed)
+            print(f"  ep {ep + 1:3d}: reward={total_reward:+9.2f}  steps={steps:3d}  "
+                  f"checkpoints={completed}/{total}")
 
-        unwrapped = env.unwrapped
-        completed = unwrapped.current_checkpoint_idx
-        total = len(unwrapped.checkpoints)
-        print(f"  Reward: {total_reward:+.2f}   Steps: {steps}   "
-              f"Checkpoints: {completed}/{total}")
         env.close()
 
+        r = np.array(rewards)
+        print(f"  -- {scenario.upper()} summary over {episodes} eps --")
+        print(f"     reward: mean={r.mean():+.2f}  std={r.std():.2f}  "
+              f"min={r.min():+.2f}  max={r.max():+.2f}")
+        print(f"     checkpoints: mean={np.mean(completions):.2f}/{total}  "
+              f"avg_steps={np.mean(step_counts):.1f}")
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate trained Rally PPO model.")
@@ -90,10 +94,13 @@ def main():
         "--no-render", action="store_true",
         help="Disable PyBullet GUI (faster headless eval)",
     )
+    parser.add_argument(
+        "--episodes", type=int, default=1,
+        help="Episodes per scenario (default: 1)",
+    )
     args = parser.parse_args()
 
-    evaluate(args.model, args.scenarios, render=not args.no_render)
-
-
+    evaluate(args.model, args.scenarios, render=not args.no_render, episodes=args.episodes)
+    
 if __name__ == "__main__":
     main()

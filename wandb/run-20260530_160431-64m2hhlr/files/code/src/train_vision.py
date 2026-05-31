@@ -129,7 +129,7 @@ def main():
     # train/ and rollout/ scalars even though we loaded a saved model.
     if run is not None:
         from stable_baselines3.common.logger import configure
-        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
+        model.set_logger(configure(run.dir, ["stdout", "tensorboard"]))
     else:
         model.tensorboard_log = log_dir
 
@@ -167,7 +167,6 @@ def main():
         eval_env.close()
         if run is not None:
             run.finish()
-            
 
 
 if __name__ == "__main__":

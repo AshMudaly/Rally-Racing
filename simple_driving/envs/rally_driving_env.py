@@ -75,11 +75,13 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     # ── Custom track (counter-clockwise oval, ~24m x 16m) ──────────────
     CUSTOM_CHECKPOINTS = [
         (  0, -14),   # CP1  start/finish, bottom center
-        (-16,  -2),   # CP2  cone slalom / big-radius left
-        (  0,  14),   # CP3  long straight, top
-        ( 14,   8),   # CP4  gentle right
-        ( 16,  -4),   # CP5  sweeping left
-        (  6, -14),   # CP6  back to finish
+        (-10, -14),   # CP2  after second ramp (gap pair)
+        (-16,  -2),   # CP3  cone slalom / big-radius left
+        (  0,  14),   # CP4  long straight, top
+        ( 14,   8),   # CP5  gentle right
+        ( 16,  -4),   # CP6  sweeping left
+        ( 15, -14),   # CP7  before single ramp
+        ( -6, -14),   # CP8  past ramps, closes the lap
     ]
     CUSTOM_OBSTACLE_HOMES = [
         (-10, -10),   # slalom cones, lower-left, staggered
@@ -88,9 +90,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         (-15,  -1),
     ]
     CUSTOM_RAMP_POSITIONS = [
-        (10, -14, math.radians(0)),    # ramp jump on bottom straight
-        (-2, -14, math.radians(0)),    # gap: up-ramp
-        (-5, -14, math.radians(180)),  # gap: down-ramp (facing back)
+        (10, -14, math.radians(180)),  # ramp jump on bottom straight
+        (-2, -14, math.radians(180)),  # gap: up-ramp
+        (-5, -14, math.radians(0)),    # gap: down-ramp (facing back)
     ]
 
     # ── Tunables ───────────────────────────────────────────────────────
@@ -162,6 +164,16 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self._p.setGravity(0, 0, -10)
         Plane(self._p)
         self.car = Car(self._p)
+
+        # Custom track spawns the car in the S/F zone (between CP1 and CP8)
+        # facing -x, rather than at the URDF default origin. Other scenarios
+        # keep the origin spawn unchanged.
+        if self.scenario == "custom":
+            spawn_yaw = math.pi  # face -x (toward CP1)
+            orn = self._p.getQuaternionFromEuler([0.0, 0.0, spawn_yaw])
+            self._p.resetBasePositionAndOrientation(
+                self.car.car, [6.0, -14.0, 0.1], orn,
+            )
 
         self._envStepCounter = 0
         self.done            = False
