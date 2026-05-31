@@ -195,14 +195,14 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             self._ramp_source       = self.RAMP_POSITIONS
             self._checkpoint_source = self.CHECKPOINTS
 
-        if self.scenario in ("phase2", "custom"):
+        if self.scenario in ("phase2", "phase3", "custom"):
             self._spawn_obstacles()
         if self.scenario in ("phase3", "custom"):
             self._spawn_ramps()
 
         checkpoints = options.get("checkpoints", None) if options else None
         self.checkpoints = checkpoints if checkpoints is not None else self._checkpoint_source
-        self.checkpoint_objects = [Goal(self._p, pos) for pos in self.checkpoints]
+        self.checkpoint_obsjects = [Goal(self._p, pos) for pos in self.checkpoints]
         self.current_checkpoint_idx = 0
 
         self.goal_object = self.checkpoint_objects[0]
