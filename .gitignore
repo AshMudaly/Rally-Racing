@@ -19,6 +19,8 @@ gen2_models/**/*.tmp
 # Logs and wandb
 logs/
 wandb/
+src/wandb/
+**/wandb/
 *.tfevents.*
 
 # IDE / OS
