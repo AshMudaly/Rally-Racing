@@ -1,208 +1,153 @@
-# Rally Racing: PPO Rally Car on a Designated Track
+# Rally Racing
 
-A PPO-trained autonomous rally car for *41118 Artificial Intelligence in Robotics*. The car drives a track defined by a sequence of checkpoints, avoids obstacles, and can optionally take jumps to finish laps faster.
-
-**Stack:** PyBullet (physics) + Gymnasium (RL interface) + Stable-Baselines3 (PPO).
-
-## Project Structure
-```
-Rally-Racing/
-├── simple_driving/                    # Installable Python package
-│   ├── __init__.py                    # Registers Gym environments
-│   ├── envs/
-│   │   ├── simple_driving_env.py      # Base env: single goal, single obstacle
-│   │   └── rally_driving_env.py       # Rally env: checkpoints, obstacles, ramps
-│   └── resources/
-│       ├── car.py                     # Car kinematics + URDF loader
-│       ├── plane.py                   # Ground plane
-│       ├── goal.py                    # Goal/checkpoint marker
-│       ├── obstacle.py                # Static red cylinder
-│       ├── ramp.py                    # Orange ramp for jumps
-│       └── *.urdf                     # PyBullet model files
-├── src/
-│   ├── reward.py                      # Reward function and tunable weights
-│   ├── observation.py                 # Observation callback (base env only)
-│   ├── train.py                       # PPO training
-│   └── test.py                        # Evaluation with rendering
-├── models/                            # Trained weights (gitignored)
-├── logs/                              # TensorBoard logs (gitignored)
-├── setup.py
-├── requirements.txt
-├── .gitignore
-└── README.md
-```
+A PyBullet rally-driving environment trained with PPO. The car learns to navigate a sequence of checkpoints, avoid obstacles, and handle ramps. A separate convolutional network (CNN) provides camera-based obstacle detection, letting a privileged-observation policy be fine-tuned to drive from vision.
 
 ## Installation
-Python 3.10+ required. No ROS or Gazebo.
+
+Tested on Ubuntu 22.04 with Python 3.10.
 
 ```bash
-cd ~/41118_ws/project/Rally-Racing
+git clone <repo-url>
+cd Rally-Racing
 pip install -r requirements.txt
 pip install -e .
 ```
 
-The `-e .` installs `simple_driving` in editable mode, so code changes apply without reinstalling.
+The `-e .` installs `simple_driving` as an editable package, so the registered gym environments (`RallyDriving-v0`, `VisionRallyDriving-v0`) become importable.
 
-Verify the install:
-```bash
-python3 -c "import simple_driving; import gymnasium as gym; print([e for e in gym.envs.registry.keys() if 'Driving' in e])"
-# Expected: ['SimpleDriving-v0', 'RallyDriving-v0']
+## Project layout
+
+```
+Rally-Racing/
+├── simple_driving/         # gym environments + assets
+│   ├── envs/
+│   │   ├── rally_driving_env.py    # privileged obs (ground-truth obstacle position)
+│   │   └── vision_rally_env.py     # vision obs (CNN-replaced obstacle channels)
+│   └── resources/                  # URDF files, meshes
+├── src/
+│   ├── train.py                    # train PPO with privileged observation
+│   ├── train_vision.py             # fine-tune PPO with vision observation
+│   ├── test.py                     # evaluate / watch a privileged model
+│   ├── test_vision.py              # evaluate / watch a vision model
+│   └── reward.py                   # reward function
+├── vision/
+│   ├── model.py                    # ObstacleCNN architecture
+│   ├── cnn_obstacle.pt             # trained CNN weights
+│   └── train_cnn.py                # CNN training script (not normally needed)
+└── gen2_models/                    # trained policies (see "Model layout" below)
 ```
 
-## Scenarios
-Select via `env.reset(options={"scenario": ...})`:
+## Model layout
 
-| Scenario | Checkpoints | Obstacles | Ramps | Use Case |
-|----------|-------------|-----------|-------|----------|
-| `phase1` | 6 default   | none      | none  | Learn racing line on bare track |
-| `phase2` | 6 default   | 4 cones   | none  | Add obstacle avoidance |
-| `phase3` | 6 default   | 4 cones   | 2 ramps | Choose between safe path or jumps |
+Trained models live under `gen2_models/<scenario>/<observation>/`:
 
-Override the checkpoint course at reset:
-```python
-env.reset(options={"scenario": "phase3", "checkpoints": [(5, 5), (10, 0), ...]})
+```
+gen2_models/
+├── phase1/privileged/best/best_model.zip
+├── phase2/privileged/best/best_model.zip
+├── phase2/vision/best/best_model.zip        # optional
+├── phase3/privileged/best/best_model.zip
+└── phase3/vision/best/best_model.zip
 ```
 
-To change the default checkpoints, obstacle positions, or ramp positions, edit the class constants at the top of `simple_driving/envs/rally_driving_env.py`:
-```python
-CHECKPOINTS       = [(16, 16), (16, 2), ...]
-OBSTACLE_HOMES    = [(8, 8), (0, 8), ...]
-RAMP_POSITIONS    = [(10, 9, math.radians(-30)), ...]
-```
+The `best/best_model.zip` is what eval / inference uses — it's the snapshot with the highest evaluation reward during training, saved by `EvalCallback`. A `ppo_*_final.zip` may also exist next to it; that's the *final* state when training stopped, which can be worse than the best snapshot if the policy regressed late.
+
+## Curriculum
+
+Training scenarios build on each other:
+
+| Scenario | Track contents |
+|----------|----------------|
+| phase1 | 6 checkpoints, no obstacles, no ramps |
+| phase2 | 6 checkpoints + 4 obstacles |
+| phase3 | 6 checkpoints + 4 obstacles + 2 ramps |
+| custom | bespoke track with its own checkpoint/obstacle/ramp lists |
+
+Privileged policies warm-start along the chain: `phase1 → phase2 → phase3 → custom`. Vision policies for a given scenario warm-start from that scenario's *privileged* model, not the previous scenario's vision model.
+
+The training scripts handle the warm-start lookup automatically based on `--scenario`.
 
 ## Training
 
-### Basic training
+All training scripts are CLI-driven. The `--scenario` flag is required.
+
+### Privileged-observation training
+
 ```bash
-cd src
-python3 train.py
-```
-Trains using 8 parallel environments. Saves `models/resume.zip` atomically every 10k steps for crash recovery, and the best-evaluated model to `models/best/best_model.zip`.
+# Train phase1 from scratch
+python3 src/train.py --scenario phase1
 
-### Configuration
-Edit the top of `src/train.py`:
-```python
-TOTAL_TIMESTEPS = 300_000     # steps per phase (increase for longer runs)
-N_ENVS          = 8           # parallel envs (reduce if low on RAM)
-SCENARIO        = "phase1"    # which scenario to train on
-LOAD_PREVIOUS   = True        # resume from models/resume.zip if it exists
-RESET_TIMESTEPS = False       # True = each run shows separately in TensorBoard
+# Train phase2, warm-starting from phase1's best model
+python3 src/train.py --scenario phase2
 
-# Network size — expanded from SB3 default [64, 64] for better value estimation
-PPO_KWARGS = dict(
-    learning_rate = 3e-4,
-    n_steps       = 512,
-    batch_size    = 256,
-    ent_coef      = 0.01,
-    device        = "cpu",
-    policy_kwargs = dict(net_arch=[256, 256]),
-)
+# Train phase3, 300k steps (default), warm-starting from phase2
+python3 src/train.py --scenario phase3
+
+# Reduced budget, no wandb logging
+python3 src/train.py --scenario phase3 --timesteps 150000 --no-wandb
+
+# Ignore the warm-start chain and train from scratch
+python3 src/train.py --scenario phase3 --fresh
 ```
 
-### Curriculum learning (recommended)
-Training phase3 from scratch is hard — too many things to learn at once. Train progressively:
+Output goes to `gen2_models/<scenario>/privileged/`.
 
-1. Set `SCENARIO = "phase1"`, `LOAD_PREVIOUS = False`, run for ~300k steps until reward plateaus
-2. Change to `SCENARIO = "phase2"`, `LOAD_PREVIOUS = True`, train another 200k
-3. Change to `SCENARIO = "phase3"`, `LOAD_PREVIOUS = True`, train another 200k
+### Vision fine-tune
 
-Each phase starts from the weights of the previous one. Expect a brief reward dip when switching phases — this is normal as the policy adapts to the harder environment.
-
-### Starting completely fresh
 ```bash
-rm -rf ../models/*.zip ../models/best/*.zip ../logs/*
-python3 train.py
+# Fine-tune vision phase3 from privileged phase3 (100k steps, default)
+python3 src/train_vision.py --scenario phase3
+
+# Longer fine-tune
+python3 src/train_vision.py --scenario phase3 --timesteps 200000
+
+# Without wandb
+python3 src/train_vision.py --scenario phase3 --no-wandb
 ```
 
-### Monitoring with TensorBoard
-In a separate terminal:
-```bash
-tensorboard --logdir ~/41118_ws/project/Rally-Racing/logs
-```
-Open http://localhost:6006. Key metrics:
-- `rollout/ep_rew_mean` — average episode reward (should trend up)
-- `rollout/ep_len_mean` — average episode length (should trend down as agent gets faster)
-- `eval/mean_reward` — score on the eval env (updated every 10k steps)
-- `train/explained_variance` — how well the value network predicts returns; target >0.7
+Output goes to `gen2_models/<scenario>/vision/`.
+
+Vision training requires that the matching privileged model already exists. If you try to run `--scenario phase3` without first training privileged phase3, the script will exit with an instructive error.
+
+Vision is only valid for `phase2`, `phase3`, and `custom` — `phase1` has no obstacles, so the CNN would have nothing to do.
 
 ## Evaluation
 
-Run the best saved model on all three scenarios with the PyBullet GUI:
+Both test scripts run a saved model and report per-episode reward, step count, and checkpoint completion. Use `--no-render` for headless evaluation (fast, terminal only) or omit it to watch the car drive in a PyBullet window.
+
+### Privileged model
+
 ```bash
-cd src
-python3 test.py
+# Watch one episode of phase3
+python3 src/test.py --model gen2_models/phase3/privileged/best/best_model.zip --scenarios phase3
+
+# Headless eval, 20 episodes
+python3 src/test.py --model gen2_models/phase3/privileged/best/best_model.zip --scenarios phase3 --episodes 20 --no-render
+
+# Evaluate on multiple scenarios in one run
+python3 src/test.py --model gen2_models/phase3/privileged/best/best_model.zip --scenarios phase1 phase2 phase3 --episodes 10 --no-render
 ```
 
-Options:
+### Vision model
+
 ```bash
-python3 test.py --model ../models/ppo_rally_final.zip
-python3 test.py --scenarios phase3
-python3 test.py --no-render            # headless, faster
-python3 test.py --scenarios phase1 phase2 phase3
+# Watch one episode
+python3 src/test_vision.py --ppo gen2_models/phase3/vision/best/best_model.zip --scenarios phase3
+
+# Headless eval, 20 episodes
+python3 src/test_vision.py --ppo gen2_models/phase3/vision/best/best_model.zip --scenarios phase3 --episodes 20 --no-render
 ```
 
-## Reward Function
+Vision eval also reports a `vision_active` percentage — the fraction of frames where the CNN predicted an obstacle was visible. Useful sanity check that the CNN is engaging when expected.
 
-All weights live in `src/reward.py` under `RewardConfig`. Edit them to shape behaviour:
+## Known behaviour
 
-| Component | Sign | Default | Purpose |
-|-----------|------|---------|---------|
-| `GOAL_REWARD`        | + | +100 | Hitting a checkpoint |
-| `STEP_PENALTY`       | − | −0.5 | Per-step cost (encourages speed) |
-| `PROGRESS_SCALE`     | + | 3.0  | Multiplier on closing distance to goal |
-| `YAW_JERK_PENALTY`   | − | −5   | Per radian of yaw *rate change* — penalises oscillation, not cornering |
-| `ROLL_DELTA_PENALTY` | − | −15  | Penalises chassis tilt |
-| `PITCH_DELTA_PENALTY`| − | −4   | Penalises front-back tilt |
-| `OBSTACLE_PENALTY`   | − | −100 | Within `MIN_SAFE_DISTANCE` of any obstacle |
-| `REPULSE_SCALE`      | − | 10   | Soft penalty inside `REPULSE_RADIUS` |
-| `OUT_OF_BOUNDS`      | − | −50  | Outside `WORLD_BOUNDARY` |
-| `AIRBORNE_BONUS`     | ± | +1   | Per step while pitched up and making progress (phase3) |
+**Phase3 privileged policy is ~90% reliable.** Over 20 episodes you'll typically see 18 clean laps (+500 ish) and 1–2 catastrophic failures (-2000 or worse, ramp collisions or obstacle collisions in awkward configurations). This is real — the policy generalizes but isn't perfect.
 
-### Yaw jerk vs yaw delta
-The swerve penalty targets the *rate of change* of heading (jerk), not the heading change itself. This means smooth cornering is unpunished — the agent can turn freely — but rapid oscillation back and forth is penalised each step. This is a more precise signal than a raw heading-change penalty.
+**Phase1 evaluation is deterministic.** Phase1 has no obstacles or ramps and the car spawns at a fixed position, so a deterministic policy produces identical episodes. Don't be alarmed by all-identical eval rewards on phase1; this is expected.
 
-### Tuning the jump tradeoff
-The `AIRBORNE_BONUS` controls whether the agent treats ramps as opportunities or hazards:
-- **Positive** (default +1) — agent learns to take jumps for shorter laps
-- **Zero** — agent ignores ramps, prefers ground-level path
-- **Negative** — agent actively avoids ramps
+**Vision policies perform somewhat worse than privileged.** The CNN-derived observation is noisier than ground truth, so expect a modest drop in mean reward. Large gaps (e.g. vision being negative while privileged is +500) suggest the CNN isn't engaging properly — check the `vision_active` number from `test_vision.py`.
 
-## Errors and Troubleshooting
+## Logging
 
-### `ModuleNotFoundError: No module named 'simple_driving'`
-The package isn't installed. Run `pip install -e .` from the project root.
-
-### `Cannot find simplecar.urdf`
-The URDF files must sit in `simple_driving/resources/` alongside `car.py`. Confirm:
-```bash
-ls simple_driving/resources/*.urdf
-# Should show: simplecar.urdf  simplegoal.urdf  simpleplane.urdf
-```
-
-### Resume Checkpoint Corrupt
-```
-zipfile.BadZipFile: Overlapped entries: 'policy.optimizer.pth' (possible zip bomb)
-```
-The training script handles this automatically — moves the bad file to `resume.zip.broken` and starts fresh. To manually recover, use the best model:
-```bash
-cp models/best/best_model.zip models/resume.zip
-python3 -c "import zipfile; print(zipfile.ZipFile('models/resume.zip').testzip())"
-# Prints None if the zip is valid
-```
-
-### SubprocVecEnv Hangs on Startup
-The `spawn` start method has issues on some systems. Drop `N_ENVS = 1` in `train.py` to confirm a single-process run works, then increase. If hangs persist, change `SubprocVecEnv` to `DummyVecEnv` in `make_train_env()`.
-
-### Agent Won't Move
-Early in training the agent often learns to sit still to avoid the obstacle penalty. The step penalty is the counter-incentive. If after 100k+ steps episodes still time out with deeply negative rewards:
-- Increase `STEP_PENALTY` magnitude (more negative)
-- Increase `PROGRESS_SCALE`
-
-### Agent Drives in Circles
-Usually means the yaw jerk penalty is too low relative to the progress reward. Increase `YAW_JERK_PENALTY` magnitude (from −5 to −10 or more).
-
-### Agent Crashes Into Every Obstacle
-The obstacle repulsion field hasn't built a strong enough gradient. Try:
-- Increase `REPULSE_RADIUS` so the penalty kicks in earlier
-- Increase `REPULSE_SCALE`
-- Increase the entropy coefficient in `train.py` (`ent_coef=0.05`) to encourage exploring evasive actions
+Training writes TensorBoard scalars to `logs/<gen>_<scenario>_<observation>/` and, if wandb is enabled (default), syncs them to the configured wandb project. Disable wandb per-run with `--no-wandb`.
