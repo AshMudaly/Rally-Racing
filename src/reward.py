@@ -18,6 +18,11 @@ and as a module-level `custom_reward` callable for backwards compatibility with
 
 import math
 
+try:
+    from config import load_config as _load_config
+    _REWARD_OVERRIDES = _load_config().get("reward", {})
+except Exception:
+    _REWARD_OVERRIDES = {}
 
 class RewardConfig:
     """All tunable weights and thresholds in one place."""
@@ -57,6 +62,9 @@ class RewardConfig:
     AIRBORNE_PITCH_THRESHOLD = 0.20   # radians — about 11 degrees
     AIRBORNE_BONUS           = 1.0    # per step while pitched up
 
+for _k, _v in _REWARD_OVERRIDES.items():
+    if hasattr(RewardConfig, _k):       # only known attributes —
+        setattr(RewardConfig, _k, _v)   # an unknown key can't inject a field
 
 class RewardCalculator:
     """

@@ -57,6 +57,30 @@ PPO_KWARGS = dict(
     device        = "cpu",
     policy_kwargs = dict(net_arch=[256, 256]),
 )
+# 
+try:
+    from config import load_config as _load_config
+    _CFG = _load_config()
+
+    TOTAL_TIMESTEPS = _CFG.get("total_timesteps", TOTAL_TIMESTEPS)
+    N_ENVS          = _CFG.get("n_envs",          N_ENVS)
+    SCENARIO        = _CFG.get("scenario",        SCENARIO)
+    LOAD_PREVIOUS   = _CFG.get("load_previous",   LOAD_PREVIOUS)
+    RESET_TIMESTEPS = _CFG.get("reset_timesteps", RESET_TIMESTEPS)
+    WANDB_PROJECT   = _CFG.get("wandb_project",   WANDB_PROJECT)
+    USE_WANDB       = _CFG.get("use_wandb",       USE_WANDB)
+
+    PPO_KWARGS.update(
+        learning_rate = _CFG.get("learning_rate", PPO_KWARGS["learning_rate"]),
+        batch_size    = _CFG.get("batch_size",    PPO_KWARGS["batch_size"]),
+        ent_coef      = _CFG.get("ent_coef",      PPO_KWARGS["ent_coef"]),
+        device        = _CFG.get("device",        PPO_KWARGS["device"]),
+        policy_kwargs = dict(net_arch=_CFG.get("net_arch",
+                                   PPO_KWARGS["policy_kwargs"]["net_arch"])),
+    )
+except Exception as _e:
+    print(f"[config] using built-in defaults ({_e})")
+
 
 WARM_START_CHAIN = {
     "phase2": "phase1",
