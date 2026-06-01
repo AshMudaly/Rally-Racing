@@ -1,0 +1,64 @@
+diff --git a/simple_driving/envs/rally_driving_env.py b/simple_driving/envs/rally_driving_env.py
+index 26c8c16..d17c99f 100644
+--- a/simple_driving/envs/rally_driving_env.py
++++ b/simple_driving/envs/rally_driving_env.py
+@@ -202,7 +202,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
+ 
+         checkpoints = options.get("checkpoints", None) if options else None
+         self.checkpoints = checkpoints if checkpoints is not None else self._checkpoint_source
+-        self.checkpoint_obsjects = [Goal(self._p, pos) for pos in self.checkpoints]
++        self.checkpoint_objects = [Goal(self._p, pos) for pos in self.checkpoints]
+         self.current_checkpoint_idx = 0
+ 
+         self.goal_object = self.checkpoint_objects[0]
+diff --git a/src/train.py b/src/train.py
+index e8ded92..7a2dbdb 100644
+--- a/src/train.py
++++ b/src/train.py
+@@ -52,16 +52,16 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
+ # ── Hyperparameters ───────────────────────────────────────────────────────
+ TOTAL_TIMESTEPS    = 300_000
+ N_ENVS             = 8
+-SCENARIO           = "phase2"           # phase1 / phase2 / phase3
++SCENARIO           = "phase3"           # phase1 / phase2 / phase3
+ LOAD_PREVIOUS      = True          # set True to load resume.zip if it exists
+-RESET_TIMESTEPS    = False        # set True to see each run as separate in TB
++RESET_TIMESTEPS    = True       # set True to see each run as separate in TB
+ WANDB_PROJECT      = "rally-racing"
+ USE_WANDB          = True
+ 
+ PPO_KWARGS = dict(
+     learning_rate = 3e-4,
+     batch_size    = 256,
+-    ent_coef      = 0.01,
++    ent_coef      = 0.005,
+     device        = "cpu",
+     policy_kwargs = dict(net_arch=[256, 256]),
+ )
+diff --git a/wandb/debug-internal.log b/wandb/debug-internal.log
+index c70bbe9..eab0208 120000
+--- a/wandb/debug-internal.log
++++ b/wandb/debug-internal.log
+@@ -1 +1 @@
+-run-20260531_221459-tyrsjajd/logs/debug-internal.log
+\ No newline at end of file
++run-20260531_232938-pqtg7r2p/logs/debug-internal.log
+\ No newline at end of file
+diff --git a/wandb/debug.log b/wandb/debug.log
+index 4cd758f..b8d8e6b 120000
+--- a/wandb/debug.log
++++ b/wandb/debug.log
+@@ -1 +1 @@
+-run-20260531_221459-tyrsjajd/logs/debug.log
+\ No newline at end of file
++run-20260531_232938-pqtg7r2p/logs/debug.log
+\ No newline at end of file
+diff --git a/wandb/latest-run b/wandb/latest-run
+index d083b6d..3498b08 120000
+--- a/wandb/latest-run
++++ b/wandb/latest-run
+@@ -1 +1 @@
+-run-20260531_221459-tyrsjajd
+\ No newline at end of file
++run-20260531_232938-pqtg7r2p
+\ No newline at end of file

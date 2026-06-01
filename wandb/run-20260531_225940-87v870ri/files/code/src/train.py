@@ -52,7 +52,7 @@ for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
 # ── Hyperparameters ───────────────────────────────────────────────────────
 TOTAL_TIMESTEPS    = 300_000
 N_ENVS             = 8
-SCENARIO           = "phase3"           # phase1 / phase2 / phase3
+SCENARIO           = "phase2"           # phase1 / phase2 / phase3
 LOAD_PREVIOUS      = True          # set True to load resume.zip if it exists
 RESET_TIMESTEPS    = True       # set True to see each run as separate in TB
 WANDB_PROJECT      = "rally-racing"
@@ -61,7 +61,7 @@ USE_WANDB          = True
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
     batch_size    = 256,
-    ent_coef      = 0.005,
+    ent_coef      = 0.01,
     device        = "cpu",
     policy_kwargs = dict(net_arch=[256, 256]),
 )
@@ -140,7 +140,7 @@ def make_callbacks(eval_env, use_wandb):
             best_model_save_path=BEST_DIR,
             log_path=LOG_DIR,
             eval_freq=20_000 // N_ENVS,
-            n_eval_episodes=10,        # was 3
+            n_eval_episodes=3,
             deterministic=True,
             verbose=1,
         ),

@@ -140,7 +140,7 @@ def make_callbacks(eval_env, use_wandb):
             best_model_save_path=BEST_DIR,
             log_path=LOG_DIR,
             eval_freq=20_000 // N_ENVS,
-            n_eval_episodes=10,        # was 3
+            n_eval_episodes=3,
             deterministic=True,
             verbose=1,
         ),

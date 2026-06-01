@@ -1,0 +1,589 @@
+Resuming from /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip
+Logging to /home/ashmu/41118_ws/project/Rally-Racing/logs
+
+Model: ActorCriticPolicy(
+  (features_extractor): FlattenExtractor(
+    (flatten): Flatten(start_dim=1, end_dim=-1)
+  )
+  (pi_features_extractor): FlattenExtractor(
+    (flatten): Flatten(start_dim=1, end_dim=-1)
+  )
+  (vf_features_extractor): FlattenExtractor(
+    (flatten): Flatten(start_dim=1, end_dim=-1)
+  )
+  (mlp_extractor): MlpExtractor(
+    (policy_net): Sequential(
+      (0): Linear(in_features=11, out_features=256, bias=True)
+      (1): Tanh()
+      (2): Linear(in_features=256, out_features=256, bias=True)
+      (3): Tanh()
+    )
+    (value_net): Sequential(
+      (0): Linear(in_features=11, out_features=256, bias=True)
+      (1): Tanh()
+      (2): Linear(in_features=256, out_features=256, bias=True)
+      (3): Tanh()
+    )
+  )
+  (action_net): Linear(in_features=256, out_features=2, bias=True)
+  (value_net): Linear(in_features=256, out_features=1, bias=True)
+)
+/home/ashmu/.local/lib/python3.10/site-packages/stable_baselines3/common/callbacks.py:419: UserWarning: Training and eval env are not of the same type<stable_baselines3.common.vec_env.subproc_vec_env.SubprocVecEnv object at 0x7b7aa474bb50> != <stable_baselines3.common.vec_env.dummy_vec_env.DummyVecEnv object at 0x7b7a9bdce800>
+  warnings.warn("Training and eval env are not of the same type" f"{self.training_env} != {self.eval_env}")
+
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━[0m [32m9,920/300,000 [0m [ [33m0:00:14[0m < [36m0:07:02[0m , [31m688 it/s[0m ]
+step 10000
+[2K------------------------------14m━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m16,376/300,000 [0m [ [33m0:00:25[0m < [36m0:07:13[0m , [31m655 it/s[0m ]
+| time/              |       |
+|    fps             | 654   |
+|    iterations      | 1     |
+|    time_elapsed    | 25    |
+|    total_timesteps | 16384 |
+------------------------------
+[2KEval num_timesteps=20000, episode_reward=-113.73 +/- 1.2038;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m19,952/300,000 [0m [ [33m0:00:37[0m < [36m0:09:32[0m , [31m490 it/s[0m ]s[0m ]
+[2KEpisode length: 15.00 +/- 0.00━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m19,952/300,000 [0m [ [33m0:00:37[0m < [36m0:09:32[0m , [31m490 it/s[0m ]
+[2K---------------------------------------;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m19,952/300,000 [0m [ [33m0:00:37[0m < [36m0:09:32[0m , [31m490 it/s[0m ]
+| eval/                   |           |
+|    mean_ep_length       | 15        |
+|    mean_reward          | -114      |
+| time/                   |           |
+|    total_timesteps      | 20000     |
+| train/                  |           |
+|    approx_kl            | 4.0630136 |
+|    clip_fraction        | 0.588     |
+|    clip_range           | 0.2       |
+|    entropy_loss         | 0.56      |
+|    explained_variance   | -1.01     |
+|    learning_rate        | 0.0003    |
+|    loss                 | 701       |
+|    n_updates            | 1060      |
+|    policy_gradient_loss | 0.0315    |
+|    std                  | 0.379     |
+|    value_loss           | 1.99e+03  |
+---------------------------------------
+[2KNew best mean reward!;38;114m━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m19,952/300,000 [0m [ [33m0:00:37[0m < [36m0:09:32[0m , [31m490 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m19,952/300,000 [0m [ [33m0:00:37[0m < [36m0:09:32[0m , [31m490 it/s[0m ]
+step 20000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m29,952/300,000 [0m [ [33m0:01:01[0m < [36m0:11:00[0m , [31m409 it/s[0m ]s[0m ]
+step 30000
+[2K------------------------------14m━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m32,728/300,000 [0m [ [33m0:01:08[0m < [36m0:10:36[0m , [31m420 it/s[0m ]
+| time/              |       |
+|    fps             | 480   |
+|    iterations      | 2     |
+|    time_elapsed    | 68    |
+|    total_timesteps | 32768 |
+------------------------------
+[2KEval num_timesteps=40000, episode_reward=163.01 +/- 96.47[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m39,952/300,000 [0m [ [33m0:01:24[0m < [36m0:09:40[0m , [31m449 it/s[0m ]s[0m ]
+[2KEpisode length: 51.33 +/- 14.61━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m39,952/300,000 [0m [ [33m0:01:24[0m < [36m0:09:40[0m , [31m449 it/s[0m ]
+[2K--------------------------------------[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m39,952/300,000 [0m [ [33m0:01:24[0m < [36m0:09:40[0m , [31m449 it/s[0m ]
+| eval/                   |          |
+|    mean_ep_length       | 51.3     |
+|    mean_reward          | 163      |
+| time/                   |          |
+|    total_timesteps      | 40000    |
+| train/                  |          |
+|    approx_kl            | 8.385302 |
+|    clip_fraction        | 0.543    |
+|    clip_range           | 0.2      |
+|    entropy_loss         | 0.57     |
+|    explained_variance   | 0.181    |
+|    learning_rate        | 0.0003   |
+|    loss                 | 554      |
+|    n_updates            | 1070     |
+|    policy_gradient_loss | 0.0904   |
+|    std                  | 0.373    |
+|    value_loss           | 1.12e+03 |
+--------------------------------------
+[2KNew best mean reward!;38;114m━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m39,952/300,000 [0m [ [33m0:01:24[0m < [36m0:09:40[0m , [31m449 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━[0m [32m39,952/300,000 [0m [ [33m0:01:24[0m < [36m0:09:40[0m , [31m449 it/s[0m ]
+step 40000
+[2K------------------------------14m━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m49,112/300,000 [0m [ [33m0:01:39[0m < [36m0:07:12[0m , [31m581 it/s[0m ]s[0m ]
+| time/              |       |
+|    fps             | 492   |
+|    iterations      | 3     |
+|    time_elapsed    | 99    |
+|    total_timesteps | 49152 |
+------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m49,920/300,000 [0m [ [33m0:01:44[0m < [36m0:08:03[0m , [31m518 it/s[0m ]
+step 50000
+[2KEval num_timesteps=60000, episode_reward=254.97 +/- 137.57m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m59,976/300,000 [0m [ [33m0:02:01[0m < [36m0:07:24[0m , [31m542 it/s[0m ]s[0m ]
+[2KEpisode length: 74.00 +/- 5.89━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m59,976/300,000 [0m [ [33m0:02:01[0m < [36m0:07:24[0m , [31m542 it/s[0m ]
+[2K-----------------------------------------38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m59,976/300,000 [0m [ [33m0:02:01[0m < [36m0:07:24[0m , [31m542 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 74          |
+|    mean_reward          | 255         |
+| time/                   |             |
+|    total_timesteps      | 60000       |
+| train/                  |             |
+|    approx_kl            | 0.020102262 |
+|    clip_fraction        | 0.179       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.586       |
+|    explained_variance   | 0.47        |
+|    learning_rate        | 0.0003      |
+|    loss                 | 1.53e+03    |
+|    n_updates            | 1080        |
+|    policy_gradient_loss | -0.00163    |
+|    std                  | 0.374       |
+|    value_loss           | 3.35e+03    |
+-----------------------------------------
+[2KNew best mean reward!;38;114m━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m59,976/300,000 [0m [ [33m0:02:01[0m < [36m0:07:24[0m , [31m542 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━[0m [32m59,976/300,000 [0m [ [33m0:02:01[0m < [36m0:07:24[0m , [31m542 it/s[0m ]
+step 60000
+[2K------------------------------14m━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m65,456/300,000 [0m [ [33m0:02:10[0m < [36m0:06:38[0m , [31m590 it/s[0m ]
+| time/              |       |
+|    fps             | 500   |
+|    iterations      | 4     |
+|    time_elapsed    | 130   |
+|    total_timesteps | 65536 |
+------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m69,912/300,000 [0m [ [33m0:02:21[0m < [36m0:07:21[0m , [31m522 it/s[0m ]s[0m ]
+step 70000
+[2KEval num_timesteps=80000, episode_reward=292.45 +/- 70.05[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━[0m [32m79,952/300,000 [0m [ [33m0:02:38[0m < [36m0:06:46[0m , [31m543 it/s[0m ]s[0m ]
+[2KEpisode length: 70.33 +/- 6.13━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━[0m [32m79,952/300,000 [0m [ [33m0:02:38[0m < [36m0:06:46[0m , [31m543 it/s[0m ]
+[2K----------------------------------------m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━[0m [32m79,952/300,000 [0m [ [33m0:02:38[0m < [36m0:06:46[0m , [31m543 it/s[0m ]
+| eval/                   |            |
+|    mean_ep_length       | 70.3       |
+|    mean_reward          | 292        |
+| time/                   |            |
+|    total_timesteps      | 80000      |
+| train/                  |            |
+|    approx_kl            | 0.01568755 |
+|    clip_fraction        | 0.213      |
+|    clip_range           | 0.2        |
+|    entropy_loss         | 0.596      |
+|    explained_variance   | 0.421      |
+|    learning_rate        | 0.0003     |
+|    loss                 | 1.64e+03   |
+|    n_updates            | 1090       |
+|    policy_gradient_loss | 0.00121    |
+|    std                  | 0.373      |
+|    value_loss           | 3.62e+03   |
+----------------------------------------
+[2KNew best mean reward!;38;114m━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━[0m [32m79,952/300,000 [0m [ [33m0:02:38[0m < [36m0:06:46[0m , [31m543 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━[0m [32m79,952/300,000 [0m [ [33m0:02:38[0m < [36m0:06:46[0m , [31m543 it/s[0m ]
+step 80000
+[2K------------------------------14m━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━━━[0m [32m81,856/300,000 [0m [ [33m0:02:42[0m < [36m0:06:11[0m , [31m589 it/s[0m ]
+| time/              |       |
+|    fps             | 505   |
+|    iterations      | 5     |
+|    time_elapsed    | 162   |
+|    total_timesteps | 81920 |
+------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m89,952/300,000 [0m [ [33m0:02:58[0m < [36m0:06:40[0m , [31m526 it/s[0m ]s[0m ]
+step 90000
+[2K---------------------------------------━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━[0m [32m98,248/300,000 [0m [ [33m0:03:12[0m < [36m0:05:32[0m , [31m609 it/s[0m ]s[0m ]
+| time/                   |           |
+|    fps                  | 511       |
+|    iterations           | 6         |
+|    time_elapsed         | 192       |
+|    total_timesteps      | 98304     |
+| train/                  |           |
+|    approx_kl            | 0.0197463 |
+|    clip_fraction        | 0.192     |
+|    clip_range           | 0.2       |
+|    entropy_loss         | 0.608     |
+|    explained_variance   | 0.463     |
+|    learning_rate        | 0.0003    |
+|    loss                 | 2.16e+03  |
+|    n_updates            | 1100      |
+|    policy_gradient_loss | -0.00121  |
+|    std                  | 0.375     |
+|    value_loss           | 3.72e+03  |
+---------------------------------------
+[2KEval num_timesteps=100000, episode_reward=319.68 +/- 16.81╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━[0m [32m99,976/300,000 [0m [ [33m0:03:19[0m < [36m0:06:11[0m , [31m540 it/s[0m ]
+[2KEpisode length: 68.00 +/- 1.41━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━[0m [32m99,976/300,000 [0m [ [33m0:03:19[0m < [36m0:06:11[0m , [31m540 it/s[0m ]
+[2K-----------------------------------------0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━[0m [32m99,976/300,000 [0m [ [33m0:03:19[0m < [36m0:06:11[0m , [31m540 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 68          |
+|    mean_reward          | 320         |
+| time/                   |             |
+|    total_timesteps      | 100000      |
+| train/                  |             |
+|    approx_kl            | 0.016792126 |
+|    clip_fraction        | 0.191       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.612       |
+|    explained_variance   | 0.522       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 2.16e+03    |
+|    n_updates            | 1110        |
+|    policy_gradient_loss | -0.00395    |
+|    std                  | 0.38        |
+|    value_loss           | 4.35e+03    |
+-----------------------------------------
+[2KNew best mean reward!;38;114m━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━━━[0m [32m99,976/300,000 [0m [ [33m0:03:19[0m < [36m0:06:11[0m , [31m540 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━[0m [32m99,976/300,000 [0m [ [33m0:03:19[0m < [36m0:06:11[0m , [31m540 it/s[0m ]
+step 100000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━━━━━[0m [32m109,968/300,000 [0m [ [33m0:03:35[0m < [36m0:06:07[0m , [31m518 it/s[0m ]
+step 110000
+[2K-------------------------------4m━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━━━[0m [32m114,576/300,000 [0m [ [33m0:03:43[0m < [36m0:05:17[0m , [31m585 it/s[0m ]m ]
+| time/              |        |
+|    fps             | 512    |
+|    iterations      | 7      |
+|    time_elapsed    | 223    |
+|    total_timesteps | 114688 |
+-------------------------------
+[2KEval num_timesteps=120000, episode_reward=442.65 +/- 34.32;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━[0m [32m119,992/300,000 [0m [ [33m0:03:56[0m < [36m0:05:36[0m , [31m537 it/s[0m ]
+[2KEpisode length: 67.00 +/- 1.41━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━[0m [32m119,992/300,000 [0m [ [33m0:03:56[0m < [36m0:05:36[0m , [31m537 it/s[0m ]
+[2K-----------------------------------------[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━[0m [32m119,992/300,000 [0m [ [33m0:03:56[0m < [36m0:05:36[0m , [31m537 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 67          |
+|    mean_reward          | 443         |
+| time/                   |             |
+|    total_timesteps      | 120000      |
+| train/                  |             |
+|    approx_kl            | 0.030129101 |
+|    clip_fraction        | 0.244       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.613       |
+|    explained_variance   | 0.591       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 1.21e+03    |
+|    n_updates            | 1120        |
+|    policy_gradient_loss | 0.00601     |
+|    std                  | 0.385       |
+|    value_loss           | 3.49e+03    |
+-----------------------------------------
+[2KNew best mean reward!;38;114m━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━━━[0m [32m119,992/300,000 [0m [ [33m0:03:56[0m < [36m0:05:36[0m , [31m537 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━━━━━[0m [32m119,992/300,000 [0m [ [33m0:03:56[0m < [36m0:05:36[0m , [31m537 it/s[0m ]
+step 120000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━━━━━[0m [32m129,888/300,000 [0m [ [33m0:04:12[0m < [36m0:05:26[0m , [31m522 it/s[0m ]
+step 130000
+[2K-------------------------------4m━━━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━━━━[0m [32m131,016/300,000 [0m [ [33m0:04:14[0m < [36m0:04:46[0m , [31m593 it/s[0m ]s[0m ]
+| time/              |        |
+|    fps             | 514    |
+|    iterations      | 8      |
+|    time_elapsed    | 254    |
+|    total_timesteps | 131072 |
+-------------------------------
+[2KEval num_timesteps=140000, episode_reward=440.02 +/- 11.2749;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━[0m [32m139,984/300,000 [0m [ [33m0:04:33[0m < [36m0:04:57[0m , [31m540 it/s[0m ]
+[2KEpisode length: 68.33 +/- 0.47━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━[0m [32m139,984/300,000 [0m [ [33m0:04:33[0m < [36m0:04:57[0m , [31m540 it/s[0m ]
+[2K----------------------------------------━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━━[0m [32m139,984/300,000 [0m [ [33m0:04:33[0m < [36m0:04:57[0m , [31m540 it/s[0m ]
+| eval/                   |            |
+|    mean_ep_length       | 68.3       |
+|    mean_reward          | 440        |
+| time/                   |            |
+|    total_timesteps      | 140000     |
+| train/                  |            |
+|    approx_kl            | 0.05501937 |
+|    clip_fraction        | 0.323      |
+|    clip_range           | 0.2        |
+|    entropy_loss         | 0.618      |
+|    explained_variance   | 0.691      |
+|    learning_rate        | 0.0003     |
+|    loss                 | 1e+03      |
+|    n_updates            | 1130       |
+|    policy_gradient_loss | 0.0172     |
+|    std                  | 0.386      |
+|    value_loss           | 2.18e+03   |
+----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━[0m [32m139,984/300,000 [0m [ [33m0:04:33[0m < [36m0:04:57[0m , [31m540 it/s[0m ]
+step 140000
+[2K-------------------------------4m━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━━[0m [32m147,352/300,000 [0m [ [33m0:04:45[0m < [36m0:04:17[0m , [31m594 it/s[0m ]
+| time/              |        |
+|    fps             | 515    |
+|    iterations      | 9      |
+|    time_elapsed    | 285    |
+|    total_timesteps | 147456 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at m━━━━━━━━━━━━━━━[0m [32m149,920/300,000 [0m [ [33m0:04:53[0m < [36m0:04:46[0m , [31m525 it/s[0m ]
+step 150000
+[2KEval num_timesteps=160000, episode_reward=504.42 +/- 34.17;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━[0m [32m159,992/300,000 [0m [ [33m0:05:10[0m < [36m0:04:18[0m , [31m544 it/s[0m ]
+[2KEpisode length: 65.33 +/- 0.94━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━[0m [32m159,992/300,000 [0m [ [33m0:05:10[0m < [36m0:04:18[0m , [31m544 it/s[0m ]
+[2K----------------------------------------━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━[0m [32m159,992/300,000 [0m [ [33m0:05:10[0m < [36m0:04:18[0m , [31m544 it/s[0m ]
+| eval/                   |            |
+|    mean_ep_length       | 65.3       |
+|    mean_reward          | 504        |
+| time/                   |            |
+|    total_timesteps      | 160000     |
+| train/                  |            |
+|    approx_kl            | 0.05769916 |
+|    clip_fraction        | 0.329      |
+|    clip_range           | 0.2        |
+|    entropy_loss         | 0.629      |
+|    explained_variance   | 0.802      |
+|    learning_rate        | 0.0003     |
+|    loss                 | 863        |
+|    n_updates            | 1140       |
+|    policy_gradient_loss | 0.0162     |
+|    std                  | 0.388      |
+|    value_loss           | 1.73e+03   |
+----------------------------------------
+[2KNew best mean reward!;38;114m━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━━━[0m [32m159,992/300,000 [0m [ [33m0:05:10[0m < [36m0:04:18[0m , [31m544 it/s[0m ]
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━[0m [32m159,992/300,000 [0m [ [33m0:05:10[0m < [36m0:04:18[0m , [31m544 it/s[0m ]
+step 160000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━━━[0m [32m163,768/300,000 [0m [ [33m0:05:16[0m < [36m0:03:49[0m , [31m595 it/s[0m ]s[0m ]
+| time/              |        |
+|    fps             | 517    |
+|    iterations      | 10     |
+|    time_elapsed    | 316    |
+|    total_timesteps | 163840 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 37m━━━━━━━━━━━━━[0m [32m169,992/300,000 [0m [ [33m0:05:30[0m < [36m0:04:08[0m , [31m525 it/s[0m ]
+step 170000
+[2KEval num_timesteps=180000, episode_reward=496.09 +/- 15.38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━[0m [32m179,976/300,000 [0m [ [33m0:05:47[0m < [36m0:03:43[0m , [31m539 it/s[0m ]
+[2KEpisode length: 65.67 +/- 0.47━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━[0m [32m179,976/300,000 [0m [ [33m0:05:47[0m < [36m0:03:43[0m , [31m539 it/s[0m ]
+[2K-----------------------------------------━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━━━[0m [32m179,976/300,000 [0m [ [33m0:05:47[0m < [36m0:03:43[0m , [31m539 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 65.7        |
+|    mean_reward          | 496         |
+| time/                   |             |
+|    total_timesteps      | 180000      |
+| train/                  |             |
+|    approx_kl            | 0.055076305 |
+|    clip_fraction        | 0.36        |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.645       |
+|    explained_variance   | 0.848       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 935         |
+|    n_updates            | 1150        |
+|    policy_gradient_loss | 0.0215      |
+|    std                  | 0.391       |
+|    value_loss           | 1.47e+03    |
+-----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ━━━━━━━━━━━━[0m [32m179,976/300,000 [0m [ [33m0:05:47[0m < [36m0:03:43[0m , [31m539 it/s[0m ]
+step 180000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━━━━[0m [32m180,176/300,000 [0m [ [33m0:05:48[0m < [36m0:03:25[0m , [31m585 it/s[0m ]s[0m ]
+| time/              |        |
+|    fps             | 517    |
+|    iterations      | 11     |
+|    time_elapsed    | 348    |
+|    total_timesteps | 180224 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ;237m━━━━━━━━━━━[0m [32m189,984/300,000 [0m [ [33m0:06:08[0m < [36m0:03:38[0m , [31m505 it/s[0m ]
+step 190000
+[2K---------------------------------------━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━[0m [32m196,552/300,000 [0m [ [33m0:06:19[0m < [36m0:02:57[0m , [31m585 it/s[0m ]
+| time/                   |           |
+|    fps                  | 517       |
+|    iterations           | 12        |
+|    time_elapsed         | 379       |
+|    total_timesteps      | 196608    |
+| train/                  |           |
+|    approx_kl            | 196.51094 |
+|    clip_fraction        | 0.714     |
+|    clip_range           | 0.2       |
+|    entropy_loss         | 0.626     |
+|    explained_variance   | 0.9       |
+|    learning_rate        | 0.0003    |
+|    loss                 | 678       |
+|    n_updates            | 1160      |
+|    policy_gradient_loss | 0.171     |
+|    std                  | 0.394     |
+|    value_loss           | 978       |
+---------------------------------------
+[2KEval num_timesteps=200000, episode_reward=-304.36 +/- 32.218;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━[0m [32m199,952/300,000 [0m [ [33m0:06:31[0m < [36m0:03:16[0m , [31m512 it/s[0m ]
+[2KEpisode length: 138.67 +/- 3.77━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━[0m [32m199,952/300,000 [0m [ [33m0:06:31[0m < [36m0:03:16[0m , [31m512 it/s[0m ]
+[2K-----------------------------------------━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━━━[0m [32m199,952/300,000 [0m [ [33m0:06:31[0m < [36m0:03:16[0m , [31m512 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 139         |
+|    mean_reward          | -304        |
+| time/                   |             |
+|    total_timesteps      | 200000      |
+| train/                  |             |
+|    approx_kl            | 0.082104735 |
+|    clip_fraction        | 0.294       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.597       |
+|    explained_variance   | 0.325       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 173         |
+|    n_updates            | 1170        |
+|    policy_gradient_loss | 0.0234      |
+|    std                  | 0.397       |
+|    value_loss           | 860         |
+-----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 7m━━━━━━━━━━[0m [32m199,952/300,000 [0m [ [33m0:06:31[0m < [36m0:03:16[0m , [31m512 it/s[0m ]
+step 200000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ;5;237m━━━━━━━━━[0m [32m209,960/300,000 [0m [ [33m0:06:48[0m < [36m0:03:14[0m , [31m465 it/s[0m ]
+step 210000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━━━━━━[0m [32m212,912/300,000 [0m [ [33m0:06:53[0m < [36m0:02:44[0m , [31m532 it/s[0m ]m ]
+| time/              |        |
+|    fps             | 514    |
+|    iterations      | 13     |
+|    time_elapsed    | 413    |
+|    total_timesteps | 212992 |
+-------------------------------
+[2KEval num_timesteps=220000, episode_reward=-3338.65 +/- 897.668;2;249;38;114m╸[0m[38;5;237m━━━━━━━━[0m [32m219,968/300,000 [0m [ [33m0:07:21[0m < [36m0:03:04[0m , [31m435 it/s[0m ]
+[2KEpisode length: 411.67 +/- 126.34━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━[0m [32m219,968/300,000 [0m [ [33m0:07:21[0m < [36m0:03:04[0m , [31m435 it/s[0m ]
+[2K---------------------------------------━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━━[0m [32m219,968/300,000 [0m [ [33m0:07:21[0m < [36m0:03:04[0m , [31m435 it/s[0m ]
+| eval/                   |           |
+|    mean_ep_length       | 412       |
+|    mean_reward          | -3.34e+03 |
+| time/                   |           |
+|    total_timesteps      | 220000    |
+| train/                  |           |
+|    approx_kl            | 184.27231 |
+|    clip_fraction        | 0.854     |
+|    clip_range           | 0.2       |
+|    entropy_loss         | 0.534     |
+|    explained_variance   | 0.901     |
+|    learning_rate        | 0.0003    |
+|    loss                 | 150       |
+|    n_updates            | 1180      |
+|    policy_gradient_loss | 0.272     |
+|    std                  | 0.406     |
+|    value_loss           | 423       |
+---------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 237m━━━━━━━━[0m [32m219,968/300,000 [0m [ [33m0:07:21[0m < [36m0:03:04[0m , [31m435 it/s[0m ]
+step 220000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━━[0m [32m229,328/300,000 [0m [ [33m0:07:42[0m < [36m0:03:42[0m , [31m319 it/s[0m ]
+| time/              |        |
+|    fps             | 495    |
+|    iterations      | 14     |
+|    time_elapsed    | 462    |
+|    total_timesteps | 229376 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 38;5;237m━━━━━━━[0m [32m229,968/300,000 [0m [ [33m0:07:47[0m < [36m0:03:04[0m , [31m383 it/s[0m ]
+step 230000
+[2KEval num_timesteps=240000, episode_reward=-3877.36 +/- 91.00[38;2;249;38;114m╸[0m[38;5;237m━━━━━━[0m [32m239,984/300,000 [0m [ [33m0:08:20[0m < [36m0:02:36[0m , [31m385 it/s[0m ]
+[2KEpisode length: 501.00 +/- 0.00━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━[0m [32m239,984/300,000 [0m [ [33m0:08:20[0m < [36m0:02:36[0m , [31m385 it/s[0m ]
+[2K-----------------------------------------━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━━[0m [32m239,984/300,000 [0m [ [33m0:08:20[0m < [36m0:02:36[0m , [31m385 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 501         |
+|    mean_reward          | -3.88e+03   |
+| time/                   |             |
+|    total_timesteps      | 240000      |
+| train/                  |             |
+|    approx_kl            | 0.045101702 |
+|    clip_fraction        | 0.283       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.506       |
+|    explained_variance   | 0.113       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 549         |
+|    n_updates            | 1190        |
+|    policy_gradient_loss | 0.0264      |
+|    std                  | 0.406       |
+|    value_loss           | 1.65e+03    |
+-----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 5;237m━━━━━━[0m [32m239,984/300,000 [0m [ [33m0:08:20[0m < [36m0:02:36[0m , [31m385 it/s[0m ]
+step 240000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━━[0m [32m245,744/300,000 [0m [ [33m0:08:33[0m < [36m0:03:08[0m , [31m289 it/s[0m ]
+| time/              |        |
+|    fps             | 478    |
+|    iterations      | 15     |
+|    time_elapsed    | 513    |
+|    total_timesteps | 245760 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at [38;5;237m━━━━━[0m [32m249,960/300,000 [0m [ [33m0:08:46[0m < [36m0:02:10[0m , [31m388 it/s[0m ]
+step 250000
+[2KEval num_timesteps=260000, episode_reward=-3833.77 +/- 36.130m[38;2;249;38;114m╸[0m[38;5;237m━━━━[0m [32m259,952/300,000 [0m [ [33m0:09:20[0m < [36m0:01:33[0m , [31m431 it/s[0m ]
+[2KEpisode length: 501.00 +/- 0.00━━━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━[0m [32m259,952/300,000 [0m [ [33m0:09:20[0m < [36m0:01:33[0m , [31m431 it/s[0m ]
+[2K---------------------------------------━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━━━[0m [32m259,952/300,000 [0m [ [33m0:09:20[0m < [36m0:01:33[0m , [31m431 it/s[0m ]
+| eval/                   |           |
+|    mean_ep_length       | 501       |
+|    mean_reward          | -3.83e+03 |
+| time/                   |           |
+|    total_timesteps      | 260000    |
+| train/                  |           |
+|    approx_kl            | 0.0502126 |
+|    clip_fraction        | 0.293     |
+|    clip_range           | 0.2       |
+|    entropy_loss         | 0.498     |
+|    explained_variance   | 0.212     |
+|    learning_rate        | 0.0003    |
+|    loss                 | 377       |
+|    n_updates            | 1200      |
+|    policy_gradient_loss | 0.0189    |
+|    std                  | 0.406     |
+|    value_loss           | 1.13e+03  |
+---------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at m[38;5;237m━━━━[0m [32m259,952/300,000 [0m [ [33m0:09:20[0m < [36m0:01:33[0m , [31m431 it/s[0m ]
+step 260000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[38;5;237m╺[0m[38;5;237m━━━[0m [32m262,096/300,000 [0m [ [33m0:09:25[0m < [36m0:02:14[0m , [31m285 it/s[0m ]m ]
+| time/              |        |
+|    fps             | 463    |
+|    iterations      | 16     |
+|    time_elapsed    | 565    |
+|    total_timesteps | 262144 |
+-------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at 0m[38;5;237m━━━[0m [32m269,936/300,000 [0m [ [33m0:09:46[0m < [36m0:01:19[0m , [31m381 it/s[0m ]
+step 270000
+[2K-----------------------------------------━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━[0m [32m278,504/300,000 [0m [ [33m0:10:06[0m < [36m0:00:51[0m , [31m429 it/s[0m ]
+| time/                   |             |
+|    fps                  | 459         |
+|    iterations           | 17          |
+|    time_elapsed         | 606         |
+|    total_timesteps      | 278528      |
+| train/                  |             |
+|    approx_kl            | 0.044559613 |
+|    clip_fraction        | 0.293       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.489       |
+|    explained_variance   | 0.187       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 720         |
+|    n_updates            | 1210        |
+|    policy_gradient_loss | 0.0158      |
+|    std                  | 0.408       |
+|    value_loss           | 1.56e+03    |
+-----------------------------------------
+[2KEval num_timesteps=280000, episode_reward=-3778.90 +/- 63.77[0m[38;2;249;38;114m╸[0m[38;5;237m━━[0m [32m279,960/300,000 [0m [ [33m0:10:24[0m < [36m0:00:54[0m , [31m374 it/s[0m ]
+[2KEpisode length: 501.00 +/- 0.00━━━━━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━[0m [32m279,960/300,000 [0m [ [33m0:10:24[0m < [36m0:00:54[0m , [31m374 it/s[0m ]
+[2K-----------------------------------------━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m[38;5;237m━━[0m [32m279,960/300,000 [0m [ [33m0:10:24[0m < [36m0:00:54[0m , [31m374 it/s[0m ]
+| eval/                   |             |
+|    mean_ep_length       | 501         |
+|    mean_reward          | -3.78e+03   |
+| time/                   |             |
+|    total_timesteps      | 280000      |
+| train/                  |             |
+|    approx_kl            | 0.049695745 |
+|    clip_fraction        | 0.287       |
+|    clip_range           | 0.2         |
+|    entropy_loss         | 0.48        |
+|    explained_variance   | 0.156       |
+|    learning_rate        | 0.0003      |
+|    loss                 | 836         |
+|    n_updates            | 1220        |
+|    policy_gradient_loss | 0.0187      |
+|    std                  | 0.407       |
+|    value_loss           | 1.88e+03    |
+-----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at [38;5;237m━━[0m [32m279,960/300,000 [0m [ [33m0:10:24[0m < [36m0:00:54[0m , [31m374 it/s[0m ]
+step 280000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at [0m[38;5;237m━[0m [32m289,968/300,000 [0m [ [33m0:10:47[0m < [36m0:00:23[0m , [31m440 it/s[0m ]
+step 290000
+[2K-------------------------------4m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[38;5;237m╺[0m [32m294,840/300,000 [0m [ [33m0:10:58[0m < [36m0:00:12[0m , [31m431 it/s[0m ][31m440 it/s[0m ]
+| time/              |        |
+|    fps             | 447    |
+|    iterations      | 18     |
+|    time_elapsed    | 658    |
+|    total_timesteps | 294912 |
+-------------------------------
+[2KEval num_timesteps=300000, episode_reward=-3790.39 +/- 33.01━━[0m[38;2;249;38;114m╸[0m [32m299,960/300,000 [0m [ [33m0:11:24[0m < [36m0:00:01[0m , [31m378 it/s[0m ]
+[2KEpisode length: 501.00 +/- 0.00━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m [32m299,960/300,000 [0m [ [33m0:11:24[0m < [36m0:00:01[0m , [31m378 it/s[0m ]
+[2K----------------------------------------━━━━━━━━━━━━━━━━━━[0m[38;2;249;38;114m╸[0m [32m299,960/300,000 [0m [ [33m0:11:24[0m < [36m0:00:01[0m , [31m378 it/s[0m ]
+| eval/                   |            |
+|    mean_ep_length       | 501        |
+|    mean_reward          | -3.79e+03  |
+| time/                   |            |
+|    total_timesteps      | 300000     |
+| train/                  |            |
+|    approx_kl            | 0.04956131 |
+|    clip_fraction        | 0.298      |
+|    clip_range           | 0.2        |
+|    entropy_loss         | 0.47       |
+|    explained_variance   | 0.208      |
+|    learning_rate        | 0.0003     |
+|    loss                 | 612        |
+|    n_updates            | 1230       |
+|    policy_gradient_loss | 0.0175     |
+|    std                  | 0.407      |
+|    value_loss           | 2.35e+03   |
+----------------------------------------
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at m [32m299,960/300,000 [0m [ [33m0:11:24[0m < [36m0:00:01[0m , [31m378 it/s[0m ]
+step 300000
+[2K[AtomicResume] /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip saved at ,000 [0m [ [33m0:11:24[0m < [36m0:00:00[0m , [31m426 it/s[0m ][31m378 it/s[0m ]
+step 310000
+[2K-------------------------------1m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m311,248/300,000 [0m [ [33m0:11:24[0m < [36m0:00:00[0m , [31m426 it/s[0m ]
+| time/              |        |
+|    fps             | 437    |
+|    iterations      | 19     |
+|    time_elapsed    | 711    |
+|    total_timesteps | 311296 |
+-------------------------------
+[2K[35m 100%[0m [38;2;114;156;31m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m [32m311,296/300,000 [0m [ [33m0:11:24[0m < [36m0:00:00[0m , [31m425 it/s[0m ]
+[?25hFinal model saved to /home/ashmu/41118_ws/project/Rally-Racing/models/ppo_rally_final.zip
+Resume checkpoint saved to /home/ashmu/41118_ws/project/Rally-Racing/models/resume.zip
