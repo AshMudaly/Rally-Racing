@@ -1,17 +1,25 @@
 """
-Fine-tune a PPO policy on VisionRallyDrivingEnv.
+PPO vision fine-tune script for VisionRallyDrivingEnv.
 
-Warm-starts from an existing model and trains a short run so the policy
-adapts to the noisier CNN-based obstacle channels. Saves per-scenario:
-    models/<scenario>/best/best_model.zip   (EvalCallback best)
-    models/<scenario>/ppo_vision_final.zip  (final)
+Warm-starts from the privileged policy of the same scenario and trains
+briefly so the policy adapts to noisier CNN-derived obstacle channels.
 
 Usage:
-    python3 src/train_vision.py
-    python3 src/train_vision.py --scenario custom --timesteps 150000
-    python3 src/train_vision.py --scenario custom --no-wandb
+    python3 src/train_vision.py --scenario phase3
+    python3 src/train_vision.py --scenario phase3 --timesteps 150000
+    python3 src/train_vision.py --scenario phase3 --no-wandb
+
+Output layout:
+    <GENERATION>_models/<scenario>/vision/best/best_model.zip
+    <GENERATION>_models/<scenario>/vision/ppo_vision_final.zip
+    logs/<GENERATION>_<scenario>_vision/
+
+Warm-start (vision):
+    <scenario> vision -> <scenario> privileged
+    e.g. phase3 vision warm-starts from gen2_models/phase3/privileged/best/best_model.zip
 """
 
+import argparse
 import os
 import sys
 
@@ -23,7 +31,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, os.path.abspath(os.path.join(SCRIPT_DIR, "..")))
 
-import argparse
 import gymnasium as gym
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -32,32 +39,46 @@ from stable_baselines3.common.callbacks import EvalCallback, CallbackList
 
 import simple_driving  # registers VisionRallyDriving-v0
 from reward import custom_reward
-from vision import ObstacleCNN, model
+from vision import ObstacleCNN
 
-# ── Inputs (warm-start sources) ────────────────────────────────────────────
-BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-CNN_PATH = os.path.join(BASE_DIR, "vision", "cnn_obstacle.pt")
-PPO_PATH = os.path.join(BASE_DIR, "models", "vision", "best", "best_model.zip")
 
-# ── Defaults ────────────────────────────────────────────────────────────────
-SCENARIO        = "phase3"
-N_ENVS          = 8          # DummyVecEnv (single process) — larger rollouts
-TOTAL_TIMESTEPS = 100_000
-WANDB_PROJECT   = "rally-racing"
+# ── Constants ─────────────────────────────────────────────────────────────
+BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+GENERATION    = "gen2"           # bump when starting a new generation
+WANDB_PROJECT = "rally-racing"
+CNN_PATH      = os.path.join(BASE_DIR, "vision", "cnn_obstacle.pt")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scenario", required=True,
+                        choices=["phase2", "phase3", "custom"])
+    parser.add_argument("--timesteps", type=int, default=100_000)
+    parser.add_argument("--n-envs", type=int, default=8)
+    parser.add_argument("--no-wandb", action="store_true")
+    return parser.parse_args()
+
+
+def warm_start_path(scenario):
+    """Vision policies warm-start from the privileged policy of the same scenario."""
+    return os.path.join(BASE_DIR, f"{GENERATION}_models", scenario,
+                        "privileged", "best", "best_model.zip")
 
 
 def load_cnn():
+    if not os.path.exists(CNN_PATH):
+        sys.exit(f"CNN weights not found at {CNN_PATH}")
     model = ObstacleCNN()
     model.load_state_dict(torch.load(CNN_PATH, map_location="cpu"))
     model.eval()
     return model
 
 
-def make_env(cnn, scenario, log_dir, render=False):
+def make_env(cnn, scenario, log_dir):
     def factory():
         env = gym.make(
             "VisionRallyDriving-v0",
-            renders=render,
+            renders=False,
             isDiscrete=False,
             reward_callback=custom_reward,
             observation_callback=None,
@@ -70,48 +91,44 @@ def make_env(cnn, scenario, log_dir, render=False):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--timesteps", type=int, default=TOTAL_TIMESTEPS)
-    parser.add_argument("--scenario", default=SCENARIO)
-    parser.add_argument("--n-envs", type=int, default=N_ENVS)
-    parser.add_argument("--no-wandb", action="store_true")
-    parser.add_argument(
-        "--save-name", default=None,
-        help="Subpath under models/ to save into (e.g. 'vision/custom_8cp'). "
-             "Defaults to the scenario name.",
-    )
-    args = parser.parse_args()
+    args = parse_args()
+    use_wandb = not args.no_wandb
 
-    # Output paths: --save-name overrides, else fall back to scenario name.
-    save_name = args.save_name if args.save_name is not None else args.scenario
-    save_dir = os.path.join(BASE_DIR, "models", save_name)
+    save_dir = os.path.join(BASE_DIR, f"{GENERATION}_models",
+                            args.scenario, "vision")
     best_dir = os.path.join(save_dir, "best")
-    log_dir  = os.path.join(BASE_DIR, "logs", f"{save_name.replace('/', '_')}_vision")
+    log_dir  = os.path.join(BASE_DIR, "logs",
+                            f"{GENERATION}_{args.scenario}_vision")
     for d in (save_dir, best_dir, log_dir):
         os.makedirs(d, exist_ok=True)
 
-    use_wandb = not args.no_wandb
+    warm = warm_start_path(args.scenario)
+    if not os.path.exists(warm):
+        sys.exit(f"Privileged model not found at {warm}.\n"
+                 f"Train it first with: python3 src/train.py --scenario {args.scenario}")
 
-    print(f"Fine-tuning PPO on VisionRallyDriving-v0 ({args.scenario})")
-    print(f"  Warm-start: {PPO_PATH}")
+    print("=" * 60)
+    print(f"PPO Vision Fine-Tune — {args.scenario}")
+    print(f"  Generation: {GENERATION}")
+    print(f"  Warm-start: {warm}")
     print(f"  CNN:        {CNN_PATH}")
     print(f"  Steps:      {args.timesteps}")
     print(f"  Envs:       {args.n_envs} (DummyVecEnv)")
     print(f"  Save dir:   {save_dir}")
     print(f"  WandB:      {use_wandb}")
+    print("=" * 60)
 
     run = None
     if use_wandb:
         import wandb
         run = wandb.init(
             project=WANDB_PROJECT,
-            name=f"{args.scenario}_vision_finetune",
-            config={
-                "scenario": args.scenario,
-                "total_timesteps": args.timesteps,
-                "n_envs": args.n_envs,
-                "warm_start": PPO_PATH,
-            },
+            name=f"{GENERATION}_{args.scenario}_vision",
+            config={"scenario": args.scenario,
+                    "generation": GENERATION,
+                    "total_timesteps": args.timesteps,
+                    "n_envs": args.n_envs,
+                    "warm_start": warm},
             sync_tensorboard=True,
             save_code=True,
         )
@@ -123,12 +140,14 @@ def main():
     )
     eval_env = DummyVecEnv([make_env(cnn, args.scenario, log_dir)])
 
-    model = PPO.load(PPO_PATH, env=train_env, device="cpu")
+    print(f"Warm-starting from {warm}")
+    model = PPO.load(warm, env=train_env, device="cpu")
 
-    # Point SB3's logger at the WandB run dir so sync_tensorboard ingests the
-    # train/ and rollout/ scalars even though we loaded a saved model.
-    from stable_baselines3.common.logger import configure
-    model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
+    if run is not None:
+        from stable_baselines3.common.logger import configure
+        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
+    else:
+        model.tensorboard_log = log_dir
 
     callbacks = [
         EvalCallback(
@@ -136,7 +155,7 @@ def main():
             best_model_save_path=best_dir,
             log_path=log_dir,
             eval_freq=5_000 // args.n_envs,
-            n_eval_episodes=5,
+            n_eval_episodes=10,
             deterministic=True,
             verbose=1,
         ),
@@ -164,7 +183,6 @@ def main():
         eval_env.close()
         if run is not None:
             run.finish()
-            
 
 
 if __name__ == "__main__":

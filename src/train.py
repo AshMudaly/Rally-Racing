@@ -1,18 +1,27 @@
 """
-PPO training script for RallyDrivingEnv.
+PPO training script for RallyDrivingEnv (privileged observation).
 
-Merges:
-    - SubprocVecEnv parallel training (from his quiz2 code) — big speedup
-    - Atomic resume.zip saves (from our Gazebo project) — no more corrupt zips
-    - Safe-load that handles corrupt resumes gracefully
-    - CheckpointCallback every 10k steps so a crash doesn't lose everything
-    - EvalCallback tracking best model on a separate eval env
-    - WandB logging via sync_tensorboard (ingests SB3's TB scalars)
+Usage:
+    python3 src/train.py --scenario phase1
+    python3 src/train.py --scenario phase2 --timesteps 300000
+    python3 src/train.py --scenario phase3 --no-wandb
+    python3 src/train.py --scenario phase2 --fresh    # ignore warm-start, train from scratch
+
+Output layout:
+    <GENERATION>_models/<scenario>/privileged/best/best_model.zip
+    <GENERATION>_models/<scenario>/privileged/ppo_rally_final.zip
+    logs/<GENERATION>_<scenario>_privileged/
+
+Warm-start chain (privileged):
+    phase1 -> scratch
+    phase2 -> phase1
+    phase3 -> phase2
+    custom -> phase3
 """
 
+import argparse
 import os
 import sys
-import zipfile
 
 import torch
 torch.set_num_threads(1)
@@ -27,10 +36,7 @@ import simple_driving  # registers RallyDriving-v0
 import gymnasium as gym
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.callbacks import (
-    BaseCallback, CheckpointCallback, EvalCallback, CallbackList,
-)
-from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.callbacks import EvalCallback, CallbackList
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
@@ -39,24 +45,10 @@ import wandb
 from wandb.integration.sb3 import WandbCallback
 
 
-# ── Paths ─────────────────────────────────────────────────────────────────
-BASE_DIR  = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-LOG_DIR   = os.path.join(BASE_DIR, "logs")
-MODEL_DIR = os.path.join(BASE_DIR, "models")
-BEST_DIR  = os.path.join(MODEL_DIR, "best")
-
-for d in (LOG_DIR, MODEL_DIR, BEST_DIR):
-    os.makedirs(d, exist_ok=True)
-
-
-# ── Hyperparameters ───────────────────────────────────────────────────────
-TOTAL_TIMESTEPS    = 300_000
-N_ENVS             = 8
-SCENARIO           = "phase3"           # phase1 / phase2 / phase3
-LOAD_PREVIOUS      = True          # set True to load resume.zip if it exists
-RESET_TIMESTEPS    = True       # set True to see each run as separate in TB
-WANDB_PROJECT      = "rally-racing"
-USE_WANDB          = True
+# ── Constants ─────────────────────────────────────────────────────────────
+BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+GENERATION    = "gen2"          # bump when starting a new generation
+WANDB_PROJECT = "rally-racing"
 
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
@@ -66,87 +58,65 @@ PPO_KWARGS = dict(
     policy_kwargs = dict(net_arch=[256, 256]),
 )
 
-ENV_KWARGS = dict(
-    renders=False,
-    isDiscrete=False,
-    reward_callback=custom_reward,
-    observation_callback=None,  # RallyDrivingEnv builds its own obs internally
-    scenario=SCENARIO,
-)
+WARM_START_CHAIN = {
+    "phase2": "phase1",
+    "phase3": "phase2",
+    "custom": "phase3",
+}
 
 
-# ── Atomic resume callback ────────────────────────────────────────────────
-class AtomicResumeCallback(BaseCallback):
-    """Write `resume.zip` atomically every `save_freq` steps."""
-    def __init__(self, save_path: str, save_freq: int = 10_000, verbose: int = 1):
-        super().__init__(verbose)
-        self.save_path = save_path
-        self.save_freq = save_freq
-
-    def _on_step(self) -> bool:
-        if self.n_calls % self.save_freq == 0:
-            tmp = self.save_path + ".tmp"
-            self.model.save(tmp)
-            os.replace(tmp, self.save_path)
-            if self.verbose:
-                print(f"[AtomicResume] {self.save_path} saved at step {self.num_timesteps}")
-        return True
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--scenario", required=True,
+                        choices=["phase1", "phase2", "phase3", "custom"])
+    parser.add_argument("--timesteps", type=int, default=300_000)
+    parser.add_argument("--n-envs", type=int, default=8)
+    parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Train from scratch even if a warm-start model exists.")
+    return parser.parse_args()
 
 
-# ── Safe resume ───────────────────────────────────────────────────────────
-def try_load_resume(resume_path: str, env):
-    if not os.path.exists(resume_path):
+def warm_start_path(scenario):
+    """Return the path the given scenario should warm-start from, or None
+    if no parent exists in the curriculum."""
+    parent = WARM_START_CHAIN.get(scenario)
+    if parent is None:
         return None
-    try:
-        with zipfile.ZipFile(resume_path) as zf:
-            bad = zf.testzip()
-            if bad is not None:
-                raise zipfile.BadZipFile(f"Corrupt member: {bad}")
-        print(f"Resuming from {resume_path}")
-        return PPO.load(resume_path, env=env, device=PPO_KWARGS["device"])
-    except (ValueError, zipfile.BadZipFile, EOFError) as e:
-        broken = resume_path + ".broken"
-        print(f"Resume checkpoint corrupt ({e}); moving to {broken}")
-        os.rename(resume_path, broken)
-        return None
+    return os.path.join(BASE_DIR, f"{GENERATION}_models", parent,
+                        "privileged", "best", "best_model.zip")
 
 
-# ── Env builders ──────────────────────────────────────────────────────────
-def make_train_env():
-    """SubprocVecEnv with N_ENVS processes. Each worker registers gym envs on import of simple_driving."""
+def make_train_env(scenario, n_envs):
     def factory():
-        env = gym.make("RallyDriving-v0", **ENV_KWARGS)
-        return env
+        return gym.make("RallyDriving-v0",
+                        renders=False, isDiscrete=False,
+                        reward_callback=custom_reward,
+                        observation_callback=None,
+                        scenario=scenario)
+    return SubprocVecEnv([factory for _ in range(n_envs)], start_method="spawn")
 
-    return SubprocVecEnv(
-        [factory for _ in range(N_ENVS)],
-        start_method="spawn",
-    )
 
-
-def make_eval_env():
-    """Single-env eval. Wrapped in Monitor so EvalCallback can read rewards."""
+def make_eval_env(scenario, log_dir):
     def factory():
-        env = gym.make("RallyDriving-v0", **ENV_KWARGS)
-        return Monitor(env, LOG_DIR)
+        env = gym.make("RallyDriving-v0",
+                       renders=False, isDiscrete=False,
+                       reward_callback=custom_reward,
+                       observation_callback=None,
+                       scenario=scenario)
+        return Monitor(env, log_dir)
     return DummyVecEnv([factory])
 
 
-# ── Callbacks ─────────────────────────────────────────────────────────────
-def make_callbacks(eval_env, use_wandb):
+def make_callbacks(eval_env, best_dir, log_dir, use_wandb, n_envs):
     callbacks = [
         EvalCallback(
             eval_env,
-            best_model_save_path=BEST_DIR,
-            log_path=LOG_DIR,
-            eval_freq=20_000 // N_ENVS,
-            n_eval_episodes=10,        # was 3
+            best_model_save_path=best_dir,
+            log_path=log_dir,
+            eval_freq=20_000 // n_envs,
+            n_eval_episodes=10,
             deterministic=True,
-            verbose=1,
-        ),
-        AtomicResumeCallback(
-            save_path=os.path.join(MODEL_DIR, "resume.zip"),
-            save_freq=10_000 // N_ENVS,
             verbose=1,
         ),
     ]
@@ -155,75 +125,75 @@ def make_callbacks(eval_env, use_wandb):
     return CallbackList(callbacks)
 
 
-# ── Main ──────────────────────────────────────────────────────────────────
 def main():
+    args = parse_args()
+    use_wandb = not args.no_wandb
+
+    model_dir = os.path.join(BASE_DIR, f"{GENERATION}_models",
+                             args.scenario, "privileged")
+    best_dir  = os.path.join(model_dir, "best")
+    log_dir   = os.path.join(BASE_DIR, "logs",
+                             f"{GENERATION}_{args.scenario}_privileged")
+    for d in (model_dir, best_dir, log_dir):
+        os.makedirs(d, exist_ok=True)
+
     print("=" * 60)
-    print(f"Rally PPO Training — scenario={SCENARIO}")
-    print(f"  Envs:   {N_ENVS} parallel")
-    print(f"  Steps:  {TOTAL_TIMESTEPS}")
-    print(f"  Logs:   {LOG_DIR}")
-    print(f"  Models: {MODEL_DIR}")
+    print(f"Rally PPO Training — {args.scenario} (privileged)")
+    print(f"  Generation: {GENERATION}")
+    print(f"  Envs:       {args.n_envs}")
+    print(f"  Steps:      {args.timesteps}")
+    print(f"  Save dir:   {model_dir}")
+    print(f"  WandB:      {use_wandb}")
     print("=" * 60)
 
     run = None
-    if USE_WANDB:
+    if use_wandb:
         run = wandb.init(
             project=WANDB_PROJECT,
-            name=f"{SCENARIO}",
-            config={
-                "scenario": SCENARIO,
-                "total_timesteps": TOTAL_TIMESTEPS,
-                "n_envs": N_ENVS,
-                **PPO_KWARGS,
-            },
-            sync_tensorboard=True,   # ingests SB3's TB metrics
+            name=f"{GENERATION}_{args.scenario}_privileged",
+            config={"scenario": args.scenario,
+                    "generation": GENERATION,
+                    "total_timesteps": args.timesteps,
+                    "n_envs": args.n_envs,
+                    **PPO_KWARGS},
+            sync_tensorboard=True,
             save_code=True,
         )
 
-    env = make_train_env()
-    eval_env = make_eval_env()
+    env = make_train_env(args.scenario, args.n_envs)
+    eval_env = make_eval_env(args.scenario, log_dir)
 
-    resume_path = os.path.join(MODEL_DIR, "resume.zip")
-    model = try_load_resume(resume_path, env) if LOAD_PREVIOUS else None
+    warm = warm_start_path(args.scenario)
+    if args.fresh or warm is None or not os.path.exists(warm):
+        if warm is not None and not args.fresh:
+            print(f"Warm-start file {warm} not found — training from scratch.")
+        else:
+            print("Training from scratch.")
+        model = PPO("MlpPolicy", env,
+                    tensorboard_log=log_dir, verbose=1, **PPO_KWARGS)
+    else:
+        print(f"Warm-starting from {warm}")
+        model = PPO.load(warm, env=env, device=PPO_KWARGS["device"])
 
-    if model is None:
-        print("Starting fresh training run.")
-        model = PPO(
-            "MlpPolicy", env,
-            tensorboard_log=LOG_DIR,
-            verbose=1,
-            **PPO_KWARGS,
-        )
-
-    # Ensure the TB stream points at the WandB run dir so sync_tensorboard
-    # captures train/ and rollout/ scalars even when resuming a saved model.
     if run is not None:
         from stable_baselines3.common.logger import configure
-        model.set_logger(configure(LOG_DIR, ["stdout", "tensorboard"]))
+        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
 
     print(f"\nModel: {model.policy}\n")
 
-    callbacks = make_callbacks(eval_env, USE_WANDB)
+    callbacks = make_callbacks(eval_env, best_dir, log_dir, use_wandb, args.n_envs)
     try:
         try:
-            model.learn(
-                total_timesteps=TOTAL_TIMESTEPS,
-                callback=callbacks,
-                reset_num_timesteps=RESET_TIMESTEPS,
-                progress_bar=True,
-            )
+            model.learn(total_timesteps=args.timesteps,
+                        callback=callbacks,
+                        reset_num_timesteps=True,
+                        progress_bar=True)
         except KeyboardInterrupt:
             print("\nInterrupted — saving current model...")
 
-        # Final save (atomic)
-        final_path = os.path.join(MODEL_DIR, "ppo_rally_final")
+        final_path = os.path.join(model_dir, "ppo_rally_final")
         model.save(final_path)
         print(f"Final model saved to {final_path}.zip")
-
-        tmp = resume_path + ".tmp"
-        model.save(tmp)
-        os.replace(tmp, resume_path)
-        print(f"Resume checkpoint saved to {resume_path}")
     finally:
         env.close()
         eval_env.close()
