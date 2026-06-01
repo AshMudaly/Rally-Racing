@@ -60,16 +60,15 @@ MAX_VIEW_DIST = 30.0    # beyond this, treat as "not visible" even if in-frustum
 
 
 def make_env():
-    """phase3 has obstacles AND ramps so we get the widest visual variety."""
+    """phase2 has obstacles but no ramps — cleaner CNN training signal."""
     return gym.make(
         "RallyDriving-v0",
         renders=False,
         isDiscrete=False,
         reward_callback=custom_reward,
         observation_callback=None,
-        scenario="phase3",
+        scenario="phase2",
     )
-
 
 def car_local_xy(car_pos, car_yaw, world_xy):
     """World (x,y) -> car-frame (x,y). +x forward, +y left."""
