@@ -1,10 +1,10 @@
 {
   "total_timesteps": 300000,
-  "n_envs": 8,
-  "scenario": "phase3",
+  "n_envs": 16,
+  "scenario": "phase1",
   "load_previous": true,
   "reset_timesteps": true,
-  "use_wandb": true,
+  "use_wandb": false,
   "wandb_project": "rally-racing",
   "learning_rate": 0.0003,
   "batch_size": 256,
@@ -38,11 +38,9 @@
   "cnn_lr": 0.001,
   "vision_timesteps": 100000,
   "test_scenarios": [
-    "phase1",
-    "phase2",
-    "phase3"
+    "phase1"
   ],
-  "test_episodes": 1,
+  "test_episodes": 3,
   "render": true,
-  "test_model": "/home/alec/Git/Rally-Racing/gen2_models/phase3/privileged/best/best_model.zip"
+  "test_model": "/home/alec/Git/Rally-Racing/gen3_models/custom_easy/privileged/ppo_rally_final.zip"
 }

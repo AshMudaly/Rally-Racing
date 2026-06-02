@@ -57,29 +57,26 @@ PPO_KWARGS = dict(
     device        = "cpu",
     policy_kwargs = dict(net_arch=[256, 256]),
 )
-# 
+
+# Load GUI/config overrides once. Values here feed argparse defaults (see
+# parse_args), so settings saved by the control panel drive training while the
+# script stays fully usable from the command line.
 try:
     from config import load_config as _load_config
     _CFG = _load_config()
-
-    TOTAL_TIMESTEPS = _CFG.get("total_timesteps", TOTAL_TIMESTEPS)
-    N_ENVS          = _CFG.get("n_envs",          N_ENVS)
-    SCENARIO        = _CFG.get("scenario",        SCENARIO)
-    LOAD_PREVIOUS   = _CFG.get("load_previous",   LOAD_PREVIOUS)
-    RESET_TIMESTEPS = _CFG.get("reset_timesteps", RESET_TIMESTEPS)
-    WANDB_PROJECT   = _CFG.get("wandb_project",   WANDB_PROJECT)
-    USE_WANDB       = _CFG.get("use_wandb",       USE_WANDB)
-
-    PPO_KWARGS.update(
-        learning_rate = _CFG.get("learning_rate", PPO_KWARGS["learning_rate"]),
-        batch_size    = _CFG.get("batch_size",    PPO_KWARGS["batch_size"]),
-        ent_coef      = _CFG.get("ent_coef",      PPO_KWARGS["ent_coef"]),
-        device        = _CFG.get("device",        PPO_KWARGS["device"]),
-        policy_kwargs = dict(net_arch=_CFG.get("net_arch",
-                                   PPO_KWARGS["policy_kwargs"]["net_arch"])),
-    )
 except Exception as _e:
-    print(f"[config] using built-in defaults ({_e})")
+    print(f"[config] could not load gui_config.json, using built-in defaults ({_e})")
+    _CFG = {}
+
+PPO_KWARGS.update(
+    learning_rate = _CFG.get("learning_rate", PPO_KWARGS["learning_rate"]),
+    batch_size    = _CFG.get("batch_size",    PPO_KWARGS["batch_size"]),
+    ent_coef      = _CFG.get("ent_coef",      PPO_KWARGS["ent_coef"]),
+    device        = _CFG.get("device",        PPO_KWARGS["device"]),
+    policy_kwargs = dict(net_arch=_CFG.get("net_arch",
+                               PPO_KWARGS["policy_kwargs"]["net_arch"])),
+)
+WANDB_PROJECT = _CFG.get("wandb_project", WANDB_PROJECT)
 
 
 WARM_START_CHAIN = {
@@ -97,11 +94,20 @@ def parse_args():
     force training from scratch (ignoring the warm-start chain).
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", required=True,
+    # Defaults come from gui_config.json when present, so the control panel's
+    # saved settings drive the run. --scenario is only required when neither
+    # the config nor the command line supplies one.
+    cfg_scenario  = _CFG.get("scenario")
+    cfg_timesteps = _CFG.get("total_timesteps", 300_000)
+    cfg_n_envs    = _CFG.get("n_envs", 8)
+    cfg_no_wandb  = not _CFG.get("use_wandb", True)
+
+    parser.add_argument("--scenario", default=cfg_scenario,
+                        required=(cfg_scenario is None),
                         choices=["phase1", "phase2", "phase3", "custom"])
-    parser.add_argument("--timesteps", type=int, default=300_000)
-    parser.add_argument("--n-envs", type=int, default=8)
-    parser.add_argument("--no-wandb", action="store_true")
+    parser.add_argument("--timesteps", type=int, default=cfg_timesteps)
+    parser.add_argument("--n-envs", type=int, default=cfg_n_envs)
+    parser.add_argument("--no-wandb", action="store_true", default=cfg_no_wandb)
     parser.add_argument("--fresh", action="store_true",
                         help="Train from scratch even if a warm-start model exists.")
     return parser.parse_args()

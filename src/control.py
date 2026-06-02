@@ -88,8 +88,15 @@ class Stage:
 
 
 def _build_train(s):
-    # train.py reads everything from gui_config.json; no CLI args needed.
-    return [PY, "train.py"], SRC_DIR
+    # Pass the key settings explicitly so the launched command is visible in
+    # the console and unambiguous; train.py also reads the rest (PPO
+    # hyperparams, reward weights) from gui_config.json.
+    argv = [PY, "train.py", "--scenario", s["scenario"],
+            "--timesteps", str(s["total_timesteps"]),
+            "--n-envs", str(s["n_envs"])]
+    if not s["use_wandb"]:
+        argv.append("--no-wandb")
+    return argv, SRC_DIR
 
 
 def _build_test(s):

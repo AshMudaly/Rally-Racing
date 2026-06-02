@@ -32,7 +32,7 @@ The `-e .` installs `simple_driving` as an editable package, so the registered g
 
 The control panel (`src/control.py`) is a single Tkinter window — pure Python standard library, no extra GUI dependencies. It lets any user who has completed installation operate the whole project without editing source.
 
-### First-time setup (one time)
+### First-time setup (one time) - Desktop Application
 
 The GUI runs each pipeline stage using a Python virtual environment that has the project dependencies installed. Setup is three one-time steps; afterwards you launch with a double-click (or one command).
 

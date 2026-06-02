@@ -59,11 +59,48 @@ def _skip_field(buf, i, wire_type):
     return i
 
 
+def _parse_tensor_proto(buf):
+    r"""Extract a single float from a scalar ``TensorProto``.
+
+    Modern TensorBoard/torch writers store scalars as a ``tensor`` field rather
+    than the legacy ``simple_value``. For a scalar the float lives either in the
+    packed ``tensor_content`` (field 4, raw little-endian float32 bytes) or in
+    the repeated ``float_val`` (field 5). Returns the float, or ``None`` if no
+    scalar value is found.
+    """
+    i = 0
+    while i < len(buf):
+        key, i = _read_varint(buf, i)
+        field, wt = key >> 3, key & 0x07
+        if field == 4 and wt == 2:          # tensor_content (bytes)
+            ln, i = _read_varint(buf, i)
+            content = buf[i:i + ln]
+            i += ln
+            if len(content) >= 4:
+                return struct.unpack("<f", content[:4])[0]
+        elif field == 5 and wt == 5:        # float_val (repeated float32)
+            val = struct.unpack("<f", buf[i:i + 4])[0]
+            i += 4
+            return val
+        elif field == 6 and wt == 5:        # double_val (repeated, some writers)
+            val = struct.unpack("<f", buf[i:i + 4])[0]
+            i += 4
+            return val
+        else:
+            i = _skip_field(buf, i, wt)
+    return None
+
+
 def _parse_summary_value(buf):
-    """Parse one summary.Value submessage -> (tag, simple_value) or None."""
+    """Parse one summary.Value submessage -> (tag, value) or None.
+
+    Handles both the legacy ``simple_value`` (field 3) and the modern
+    ``tensor`` (field 8) scalar encodings, so logs from any SB3 / TensorBoard
+    version are read correctly.
+    """
     i = 0
     tag = None
-    simple_value = None
+    value = None
     while i < len(buf):
         key, i = _read_varint(buf, i)
         field, wt = key >> 3, key & 0x07
@@ -74,13 +111,19 @@ def _parse_summary_value(buf):
         elif field == 2 and wt == 2:        # node_name (skip)
             ln, i = _read_varint(buf, i)
             i += ln
-        elif field == 3 and wt == 5:        # simple_value (float32)
-            simple_value = struct.unpack("<f", buf[i:i + 4])[0]
+        elif field == 3 and wt == 5:        # simple_value (float32, legacy)
+            value = struct.unpack("<f", buf[i:i + 4])[0]
             i += 4
+        elif field == 8 and wt == 2:        # tensor (TensorProto, modern)
+            ln, i = _read_varint(buf, i)
+            tv = _parse_tensor_proto(buf[i:i + ln])
+            if tv is not None:
+                value = tv
+            i += ln
         else:
             i = _skip_field(buf, i, wt)
-    if tag is not None and simple_value is not None:
-        return tag, simple_value
+    if tag is not None and value is not None:
+        return tag, value
     return None
 
 
@@ -168,17 +211,24 @@ def read_scalars(path):
 
 
 def latest_event_file(run_dir):
-    """Return the most-recently-modified tfevents file in run_dir, or None."""
+    r"""Return the most-recently-modified tfevents file at or below ``run_dir``.
+
+    Searches recursively, because Stable-Baselines3 / PPO writes its events into
+    an auto-created numbered subdirectory (e.g. ``<run>/PPO_1/events.out...``)
+    rather than directly in the run directory. Walking the tree means the panel
+    finds the logs whether they sit in the run folder itself or one level down.
+    """
     if not os.path.isdir(run_dir):
         return None
     candidates = []
-    for name in os.listdir(run_dir):
-        if "tfevents" in name:
-            full = os.path.join(run_dir, name)
-            try:
-                candidates.append((os.path.getmtime(full), full))
-            except OSError:
-                pass
+    for root, _dirs, files in os.walk(run_dir):
+        for name in files:
+            if "tfevents" in name:
+                full = os.path.join(root, name)
+                try:
+                    candidates.append((os.path.getmtime(full), full))
+                except OSError:
+                    pass
     if not candidates:
         return None
     candidates.sort()
