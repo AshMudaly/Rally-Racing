@@ -12,11 +12,12 @@ import argparse
 import os
 import sys
 import time
-import simple_driving  # registers RallyDriving-v0
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.abspath(os.path.join(HERE, "..")))
+import simple_driving  # registers RallyDriving-v0
 
 import gymnasium as gym
 import numpy as np

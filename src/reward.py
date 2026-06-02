@@ -29,7 +29,7 @@ class RewardConfig:
 
     # ── Major events ───────────────────────────────────────────────────
     GOAL_REWARD       = 100.0    # reaching a checkpoint
-    OBSTACLE_PENALTY  = -200.0   # close-contact with an obstacle
+    OBSTACLE_PENALTY  = -100.0   # close-contact with an obstacle
     OUT_OF_BOUNDS     = -50.0
     WORLD_BOUNDARY    =  30.0    # half-extent of the play area
 
@@ -46,14 +46,14 @@ class RewardConfig:
     # (~0.2 units/step * PROGRESS_SCALE=5 = +1.0) outweighed the jerk
     # penalty, making oscillation profitable. At -8.0 the agent must
     # maintain a straight line to earn positive reward.
-    YAW_JERK_PENALTY    =  -2.0   # per radian of yaw rate change
+    YAW_JERK_PENALTY    =  -8.0   # per radian of yaw rate change
     ROLL_DELTA_PENALTY  = -15.0   # per radian of roll change (chassis tilt)
     PITCH_DELTA_PENALTY =  -4.0   # per radian of pitch change
 
     # ── Obstacle handling ──────────────────────────────────────────────
     MIN_SAFE_DISTANCE     = 1.0    # closer than this is a "hit"
-    REPULSE_RADIUS        = 1.5    # range of repulsive field
-    REPULSE_SCALE         = 5.0   # strength of repulsive field
+    REPULSE_RADIUS        = 2.5    # range of repulsive field
+    REPULSE_SCALE         = 10.0   # strength of repulsive field
 
     # ── Jump bonus (phase 3) ───────────────────────────────────────────
     # Positive value => agent is rewarded for getting airborne briefly.
@@ -61,7 +61,6 @@ class RewardConfig:
     # magnitude exceeding the threshold (i.e. the car launched off a ramp).
     AIRBORNE_PITCH_THRESHOLD = 0.20   # radians — about 11 degrees
     AIRBORNE_BONUS           = 1.0    # per step while pitched up
-    RAMP_TAKEN_BONUS        = 50.0   # one-time per ramp per episode
 
 for _k, _v in _REWARD_OVERRIDES.items():
     if hasattr(RewardConfig, _k):       # only known attributes —
@@ -85,7 +84,6 @@ class RewardCalculator:
         prev_roll=0.0, current_roll=0.0,
         prev_pitch=0.0, current_pitch=0.0,
         obstacle_positions=None, scenario="phase1",
-        ramp_taken=False,
     ) -> float:
         cfg = self.cfg
         reward = 0.0
@@ -95,6 +93,8 @@ class RewardCalculator:
         reward += cfg.STEP_PENALTY + cfg.PROGRESS_SCALE * progress
 
         # ── Regression: penalise moving away from goal (all scenarios) ──
+        # FIX: removed has_obstacle guard — regression must fire in phase1
+        # too, otherwise the agent has no cost for zigzagging.
         if progress < 0:
             reward += cfg.REGRESSION_PENALTY
 
@@ -136,10 +136,6 @@ class RewardCalculator:
         if scenario == "phase3" and current_pitch > cfg.AIRBORNE_PITCH_THRESHOLD and progress > 0:
             reward += cfg.AIRBORNE_BONUS
 
-        # ── Ramp taken bonus ────────────────────────────────────────────
-        if ramp_taken:
-            reward += cfg.RAMP_TAKEN_BONUS
-
         return reward
 
     @staticmethod
@@ -151,8 +147,10 @@ class RewardCalculator:
             return delta + 2 * math.pi
         return delta
 
+
 # ── Module-level callable for env.reward_callback ──────────────────────
 _default_calculator = RewardCalculator()
+
 
 def custom_reward(**kwargs) -> float:
     return _default_calculator(**kwargs)

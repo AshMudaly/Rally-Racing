@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="Operation, Architecture, and Function Reference" />
+  <title>Rally-Racing System Guide</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+  </style>
+<style>
+/* system_guide.css — theme for the Rally-Racing HTML system guide */
+:root {
+  --bg: #0f1115;
+  --panel: #161a22;
+  --text: #d7dde5;
+  --muted: #8b95a4;
+  --accent: #4aa3ff;
+  --accent-2: #6ee7b7;
+  --border: #262c38;
+  --code-bg: #1b2029;
+}
+
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65;
+  max-width: 50em;
+  margin: 0 auto;
+  padding: 48px 32px 96px;
+  background: var(--bg);
+}
+
+h1, h2, h3 { color: #fff; line-height: 1.25; font-weight: 650; }
+h1 {
+  font-size: 2.1em; margin-bottom: 0.1em;
+  border-bottom: 3px solid var(--accent); padding-bottom: 0.3em;
+}
+h2 {
+  font-size: 1.5em; margin-top: 2em;
+  border-bottom: 1px solid var(--border); padding-bottom: 0.25em;
+}
+h3 { font-size: 1.15em; margin-top: 1.6em; color: var(--accent-2); }
+.author { color: var(--muted); font-style: italic; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p, li { color: var(--text); }
+strong { color: #fff; }
+em { color: var(--accent-2); font-style: normal; }
+
+code {
+  background: var(--code-bg);
+  color: #e6c07b;
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+pre code { background: none; color: #c9d1d9; padding: 0; }
+
+table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+th { background: var(--panel); color: #fff; }
+tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+/* Table of contents */
+#TOC, nav#TOC {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 24px;
+  margin: 1.5em 0 2.5em;
+}
+#TOC ul { list-style: none; padding-left: 1.2em; }
+#TOC > ul { padding-left: 0; }
+#TOC a { color: var(--text); }
+#TOC a:hover { color: var(--accent); }
+
+/* MathJax display blocks shouldn't overflow on mobile */
+mjx-container { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+blockquote {
+  border-left: 3px solid var(--accent-2);
+  margin-left: 0; padding-left: 16px; color: var(--muted);
+}
+
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Rally-Racing System Guide</h1>
+<p class="author">Operation, Architecture, and Function Reference</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#the-curriculum" id="toc-the-curriculum">The
+Curriculum</a></li>
+<li><a href="#sec:operation" id="toc-sec:operation">Operation</a>
+<ul>
+<li><a href="#gui-operation-recommended"
+id="toc-gui-operation-recommended">GUI operation (recommended)</a></li>
+<li><a href="#manual-operation-command-line"
+id="toc-manual-operation-command-line">Manual operation (command
+line)</a></li>
+</ul></li>
+<li><a href="#architecture-and-key-functions"
+id="toc-architecture-and-key-functions">Architecture and Key
+Functions</a>
+<ul>
+<li><a href="#environment-simple_drivingenvsrally_driving_env.py"
+id="toc-environment-simple_drivingenvsrally_driving_env.py">Environment:
+<code>simple_driving/envs/rally_driving_env.py</code></a></li>
+<li><a href="#sec:reward" id="toc-sec:reward">Reward:
+<code>src/reward.py</code></a></li>
+<li><a href="#vision-visionmodel.py"
+id="toc-vision-visionmodel.py">Vision:
+<code>vision/model.py</code></a></li>
+<li><a href="#vision-environment-simple_drivingenvsvision_rally_env.py"
+id="toc-vision-environment-simple_drivingenvsvision_rally_env.py">Vision
+environment:
+<code>simple_driving/envs/vision_rally_env.py</code></a></li>
+<li><a href="#training-srctrain.py"
+id="toc-training-srctrain.py">Training:
+<code>src/train.py</code></a></li>
+<li><a href="#evaluation-srctest.py"
+id="toc-evaluation-srctest.py">Evaluation:
+<code>src/test.py</code></a></li>
+</ul></li>
+<li><a href="#logging-and-metrics" id="toc-logging-and-metrics">Logging
+and Metrics</a></li>
+<li><a href="#known-behaviour" id="toc-known-behaviour">Known
+Behaviour</a></li>
+</ul>
+</nav>
+<h1 id="overview">Overview</h1>
+<p>Rally-Racing is a PyBullet driving environment trained with Proximal
+Policy Optimization (PPO). A car learns to pass a sequence of
+checkpoints while avoiding obstacles and handling ramps. The project
+supports two observation regimes:</p>
+<ul>
+<li><p><strong>Privileged observation</strong> — the policy receives the
+ground-truth position of the nearest obstacle directly from the
+simulator.</p></li>
+<li><p><strong>Vision observation</strong> — a convolutional network
+(<code>ObstacleCNN</code>) infers obstacle presence and location from
+the car’s camera, and those predictions replace the privileged obstacle
+channels. A privileged policy is fine-tuned into a vision
+policy.</p></li>
+</ul>
+<p>Training follows a curriculum of increasingly difficult scenarios,
+and the whole system can be operated either from the command line
+(manual operation) or through the Tkinter control panel (GUI operation).
+Both are described in Section <a href="#sec:operation"
+data-reference-type="ref" data-reference="sec:operation">3</a>.</p>
+<h1 id="the-curriculum">The Curriculum</h1>
+<p>The scenarios build on one another. Each privileged policy
+warm-starts from the previous scenario’s privileged policy.</p>
+<div class="center">
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Scenario</strong></th>
+<th style="text-align: left;"><strong>Track contents</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">phase1</td>
+<td style="text-align: left;">6 checkpoints, no obstacles, no ramps</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">phase2</td>
+<td style="text-align: left;">6 checkpoints + 4 obstacles</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">phase3</td>
+<td style="text-align: left;">6 checkpoints + 4 obstacles + 2 ramps</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">custom</td>
+<td style="text-align: left;">bespoke checkpoint / obstacle / ramp
+lists</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Warm-start chain:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">phase1</mtext><mo>→</mo><mtext mathvariant="normal">phase2</mtext><mo>→</mo><mtext mathvariant="normal">phase3</mtext><mo>→</mo><mtext mathvariant="normal">custom</mtext></mrow><annotation encoding="application/x-tex">\text{phase1} \rightarrow \text{phase2} \rightarrow
+\text{phase3} \rightarrow \text{custom}</annotation></semantics></math>.
+A <em>vision</em> policy for a given scenario warm-starts from that
+scenario’s <em>privileged</em> policy, not from a previous vision
+policy.</p>
+<h1 id="sec:operation">Operation</h1>
+<h2 id="gui-operation-recommended">GUI operation (recommended)</h2>
+<p>The control panel (<code>src/control.py</code>) exposes every setting
+and runs every pipeline stage without touching source code. Launch it by
+double-clicking the <em>Rally-Racing Control Panel</em> icon (after
+running <code>install_desktop.sh</code> once), or from a terminal:</p>
+<pre><code>./launch.sh</code></pre>
+<p>The panel is organised into a settings area (left) and a run area
+(right):</p>
+<ul>
+<li><p><strong>Training tab</strong> — total timesteps, parallel
+environments, scenario, PPO hyperparameters, and Weights &amp; Biases
+logging.</p></li>
+<li><p><strong>Reward weights tab</strong> — every coefficient in
+<code>RewardConfig</code> (Section <a href="#sec:reward"
+data-reference-type="ref" data-reference="sec:reward">4.2</a>), editable
+live.</p></li>
+<li><p><strong>Vision tab</strong> — dataset collection size, CNN
+training settings, and vision fine-tune budget.</p></li>
+<li><p><strong>Evaluation tab</strong> — scenarios to evaluate, episode
+count, whether to open the simulator window, and the model file to
+load.</p></li>
+<li><p><strong>Run &amp; Console tab</strong> — run any stage
+individually, or tick several and run them in succession; live output
+streams to the console.</p></li>
+<li><p><strong>Training Metrics tab</strong> — live plots of episode
+reward, loss, and other scalars read from the local TensorBoard logs,
+plus an <em>Open in W&amp;B</em> button for the full online
+dashboard.</p></li>
+</ul>
+<p>Settings are saved to <code>gui_config.json</code>, which the
+training scripts read at runtime. Nothing is hardcoded in two
+places.</p>
+<h2 id="manual-operation-command-line">Manual operation (command
+line)</h2>
+<p>Every stage is also a standalone CLI script. The GUI is a convenience
+layer over exactly these commands; the scripts remain fully usable on
+their own.</p>
+<h4 id="privileged-training.">Privileged training.</h4>
+<pre><code>python3 src/train.py --scenario phase1
+python3 src/train.py --scenario phase3 --timesteps 150000 --no-wandb
+python3 src/train.py --scenario phase3 --fresh   # ignore warm-start chain</code></pre>
+<h4 id="vision-fine-tune">Vision fine-tune</h4>
+<p>(requires the matching privileged model):</p>
+<pre><code>python3 src/train_vision.py --scenario phase3
+python3 src/train_vision.py --scenario phase3 --timesteps 200000</code></pre>
+<h4 id="evaluation">Evaluation</h4>
+<p>(omit <code>–no-render</code> to watch in a window):</p>
+<pre><code>python3 src/test.py --model gen2_models/phase3/privileged/best/best_model.zip \
+    --scenarios phase3 --episodes 20 --no-render
+python3 src/test_vision.py --ppo gen2_models/phase3/vision/best/best_model.zip \
+    --scenarios phase3 --episodes 20 --no-render</code></pre>
+<h4 id="relationship-between-the-two.">Relationship between the
+two.</h4>
+<p>A GUI “Run” button builds and launches the corresponding command
+above as a subprocess, passing your saved settings via
+<code>gui_config.json</code> and command-line arguments. Manual and GUI
+operation therefore produce identical runs; the GUI simply removes the
+need to remember flags and paths.</p>
+<h1 id="architecture-and-key-functions">Architecture and Key
+Functions</h1>
+<p>This section documents the important functions across the package,
+grouped by module.</p>
+<h2 id="environment-simple_drivingenvsrally_driving_env.py">Environment:
+<code>simple_driving/envs/rally_driving_env.py</code></h2>
+<h4
+id="rallydrivingenv.resetseed-options"><code>RallyDrivingEnv.reset(seed, options)</code></h4>
+<p>Re-initialises an episode: respawns the car at the scenario’s start
+pose, rebuilds the checkpoint list, and (for phase2/phase3) spawns
+obstacles and ramps. Returns the initial observation. The random seed
+makes obstacle placement reproducible.</p>
+<h4
+id="rallydrivingenv.stepaction"><code>RallyDrivingEnv.step(action)</code></h4>
+<p>Advances the simulation by one control step. It applies the action,
+steps PyBullet, computes the reward through the injected
+<code>reward_callback</code>, checks termination, and returns the tuple
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mtext mathvariant="normal">obs</mtext><mo>,</mo><mtext mathvariant="normal">reward</mtext><mo>,</mo><mtext mathvariant="normal">done</mtext><mo>,</mo><mtext mathvariant="normal">truncated</mtext><mo>,</mo><mtext mathvariant="normal">info</mtext><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\text{obs}, \text{reward}, \text{done}, \text{truncated}, \text{info})</annotation></semantics></math>.
+If no reward callback was supplied it raises, by design — the
+environment never silently scores episodes with a default reward.</p>
+<h4
+id="rallydrivingenv.getextendedobservation"><code>RallyDrivingEnv.getExtendedObservation()</code></h4>
+<p>Builds the 11-dimensional observation vector the policy consumes:
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mspace width="0.167em"></mspace><msub><mi>g</mi><mi>x</mi></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>g</mi><mi>y</mi></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>c</mi><mtext mathvariant="normal">rem</mtext></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>o</mi><mi>x</mi></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>o</mi><mi>y</mi></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>b</mi><mtext mathvariant="normal">obs</mtext></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>θ</mi><mtext mathvariant="normal">pitch</mtext></msub><mo>,</mo><mspace width="0.222em"></mspace><msub><mi>θ</mi><mtext mathvariant="normal">roll</mtext></msub><mo>,</mo><mspace width="0.222em"></mspace><mi>v</mi><mo>,</mo><mspace width="0.222em"></mspace><mo>cos</mo><mi>ψ</mi><mo>,</mo><mspace width="0.222em"></mspace><mo>sin</mo><mi>ψ</mi><mspace width="0.167em"></mspace><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[\, g_x,\ g_y,\ c_{\text{rem}},\ o_x,\ o_y,\ b_{\text{obs}},\
+      \theta_{\text{pitch}},\ \theta_{\text{roll}},\ v,\
+      \cos\psi,\ \sin\psi \,]</annotation></semantics></math> where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>g</mi><mi>x</mi></msub><mo>,</mo><msub><mi>g</mi><mi>y</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(g_x,g_y)</annotation></semantics></math>
+is the next checkpoint in the car’s local frame,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>c</mi><mtext mathvariant="normal">rem</mtext></msub><annotation encoding="application/x-tex">c_{\text{rem}}</annotation></semantics></math>
+is the fraction of checkpoints remaining,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>o</mi><mi>x</mi></msub><mo>,</mo><msub><mi>o</mi><mi>y</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(o_x,o_y)</annotation></semantics></math>
+is the nearest obstacle in the local frame,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>b</mi><mtext mathvariant="normal">obs</mtext></msub><annotation encoding="application/x-tex">b_{\text{obs}}</annotation></semantics></math>
+is a
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mi>/</mi><mn>1</mn></mrow><annotation encoding="application/x-tex">0/1</annotation></semantics></math>
+flag for whether an obstacle exists,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mtext mathvariant="normal">pitch</mtext></msub><annotation encoding="application/x-tex">\theta_{\text{pitch}}</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mtext mathvariant="normal">roll</mtext></msub><annotation encoding="application/x-tex">\theta_{\text{roll}}</annotation></semantics></math>
+are chassis angles,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>v</mi><annotation encoding="application/x-tex">v</annotation></semantics></math>
+is planar speed, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mo>cos</mo><mi>ψ</mi><mo>,</mo><mo>sin</mo><mi>ψ</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\cos\psi,\sin\psi)</annotation></semantics></math>
+encodes heading without a wrap discontinuity. Transforming the goal and
+obstacle into the car’s local frame makes the policy translation- and
+rotation-invariant.</p>
+<h4
+id="rallydrivingenv.get_camera_imagewidth-height"><code>RallyDrivingEnv.get_camera_image(width, height)</code></h4>
+<p>Renders the car’s onboard camera view. Purely additive: it does not
+affect <code>step</code>, <code>reset</code>, or the reward, so it can
+be used for vision data collection without altering training
+dynamics.</p>
+<h4
+id="rallydrivingenv._nearest_obstaclecar_pos"><code>RallyDrivingEnv._nearest_obstacle(car_pos)</code></h4>
+<p>Returns the closest obstacle and its distance, used both for the
+observation and for the close-contact reward term.</p>
+<h2 id="sec:reward">Reward: <code>src/reward.py</code></h2>
+<h4 id="rewardconfig"><code>RewardConfig</code></h4>
+<p>A dataclass-like container of every reward coefficient (goal reward,
+obstacle penalty, progress scale, smoothness penalties, repulsive-field
+parameters, airborne bonus). The GUI edits these values; the environment
+never hardcodes them.</p>
+<h4
+id="rewardcalculator.__call__"><code>RewardCalculator.__call__(…)</code></h4>
+<p>Computes the scalar reward for one step. The total is a sum of
+independent terms:
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><msub><mi>r</mi><mtext mathvariant="normal">prog</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">reg</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">goal</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">smooth</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">coll</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">rep</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">oob</mtext></msub><mo>+</mo><msub><mi>r</mi><mtext mathvariant="normal">air</mtext></msub></mrow><annotation encoding="application/x-tex">r = r_{\text{prog}} + r_{\text{reg}} + r_{\text{goal}} + r_{\text{smooth}}
+  + r_{\text{coll}} + r_{\text{rep}} + r_{\text{oob}} + r_{\text{air}}</annotation></semantics></math>
+where each term contributes as follows:</p>
+<ul>
+<li><p><strong>Progress</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mtext mathvariant="normal">prog</mtext></msub><mo>=</mo><msub><mi>r</mi><mtext mathvariant="normal">step</mtext></msub><mo>+</mo><msub><mi>k</mi><mtext mathvariant="normal">prog</mtext></msub><mspace width="0.167em"></mspace><mi>Δ</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">r_{\text{prog}} = r_{\text{step}} + k_{\text{prog}}\,\Delta d</annotation></semantics></math>,
+a constant per-step cost plus a bonus proportional to the reduction in
+distance to the goal
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">\Delta d</annotation></semantics></math>.</p></li>
+<li><p><strong>Regression</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mtext mathvariant="normal">reg</mtext></msub><mo>=</mo><msub><mi>r</mi><mtext mathvariant="normal">reg</mtext></msub></mrow><annotation encoding="application/x-tex">r_{\text{reg}} = r_{\text{reg}}</annotation></semantics></math>
+when
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>d</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\Delta d &lt; 0</annotation></semantics></math>,
+an extra penalty for moving away from the goal. It fires in all
+scenarios (including phase1) so the agent always pays for
+zigzagging.</p></li>
+<li><p><strong>Checkpoint</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mtext mathvariant="normal">goal</mtext></msub><annotation encoding="application/x-tex">r_{\text{goal}}</annotation></semantics></math>
+added once when a checkpoint is reached.</p></li>
+<li><p><strong>Smoothness / stability</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mtext mathvariant="normal">smooth</mtext></msub><mo>=</mo><msub><mi>k</mi><mtext mathvariant="normal">yaw</mtext></msub><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">|</mo><msub><mi>j</mi><mi>ψ</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>+</mo><msub><mi>k</mi><mtext mathvariant="normal">roll</mtext></msub><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">|</mo><mi>Δ</mi><msub><mi>θ</mi><mi>r</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow><mo>+</mo><msub><mi>k</mi><mtext mathvariant="normal">pitch</mtext></msub><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">|</mo><mi>Δ</mi><msub><mi>θ</mi><mi>p</mi></msub><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">r_{\text{smooth}} = k_{\text{yaw}}\,|j_\psi|
+         + k_{\text{roll}}\,|\Delta\theta_r| + k_{\text{pitch}}\,|\Delta\theta_p|</annotation></semantics></math>,
+penalising yaw jerk
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>j</mi><mi>ψ</mi></msub><annotation encoding="application/x-tex">j_\psi</annotation></semantics></math>
+(the change in yaw rate) and roll / pitch changes between
+steps.</p></li>
+<li><p><strong>Collision</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mtext mathvariant="normal">coll</mtext></msub><annotation encoding="application/x-tex">r_{\text{coll}}</annotation></semantics></math>
+applied when the nearest obstacle is within the minimum safe
+distance.</p></li>
+<li><p><strong>Repulsive field</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>r</mi><mtext mathvariant="normal">rep</mtext></msub><mo>=</mo><mo>−</mo><msub><mi>k</mi><mtext mathvariant="normal">rep</mtext></msub><msub><mo>∑</mo><mi>i</mi></msub><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mspace width="0.222em"></mspace><mi>R</mi><mo>−</mo><msub><mi>d</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">r_{\text{rep}} = -k_{\text{rep}} \sum_i \max(0,\ R - d_i)</annotation></semantics></math>,
+a soft penalty that grows as the car approaches any obstacle within
+radius
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math>,
+discouraging skimming even without a collision.</p></li>
+<li><p><strong>Boundary</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mtext mathvariant="normal">oob</mtext></msub><annotation encoding="application/x-tex">r_{\text{oob}}</annotation></semantics></math>
+applied when the car leaves the world bounds.</p></li>
+<li><p><strong>Airborne</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>r</mi><mtext mathvariant="normal">air</mtext></msub><annotation encoding="application/x-tex">r_{\text{air}}</annotation></semantics></math>,
+a small phase3 bonus for being pitched up while still making forward
+progress (rewarding committed ramp jumps).</p></li>
+</ul>
+<h4
+id="rewardcalculator._wrap_deltadelta"><code>RewardCalculator._wrap_delta(delta)</code></h4>
+<p>Wraps an angular difference into
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mo>−</mo><mi>π</mi><mo>,</mo><mi>π</mi><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-\pi, \pi]</annotation></semantics></math>
+so heading changes near the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>±</mo><mi>π</mi></mrow><annotation encoding="application/x-tex">\pm\pi</annotation></semantics></math>
+boundary are measured correctly rather than as near-full rotations.</p>
+<h4 id="custom_rewardkwargs"><code>custom_reward(**kwargs)</code></h4>
+<p>Module-level functional wrapper around a default
+<code>RewardCalculator</code>, used as the environment’s
+<code>reward_callback</code>.</p>
+<h2 id="vision-visionmodel.py">Vision: <code>vision/model.py</code></h2>
+<h4 id="obstaclecnn.forwardx"><code>ObstacleCNN.forward(x)</code></h4>
+<p>Runs the convolutional stack over a camera frame and returns the raw
+network outputs (logits / regressed coordinates) describing whether an
+obstacle is visible and where.</p>
+<h4 id="obstaclecnn.predictx"><code>ObstacleCNN.predict(x)</code></h4>
+<p>Inference wrapper around <code>forward</code> that converts raw
+outputs into the obstacle-presence flag and local position estimate the
+vision environment substitutes into the observation vector.</p>
+<h2 id="vision-environment-simple_drivingenvsvision_rally_env.py">Vision
+environment: <code>simple_driving/envs/vision_rally_env.py</code></h2>
+<h4
+id="visionrallydrivingenv.getextendedobservation"><code>VisionRallyDrivingEnv.getExtendedObservation()</code></h4>
+<p>Overrides the privileged observation: it captures a camera frame,
+runs the CNN, and replaces the obstacle channels the obstacle channels
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>o</mi><mi>x</mi></msub><mo>,</mo><msub><mi>o</mi><mi>y</mi></msub><mo>,</mo><msub><mi>b</mi><mtext mathvariant="normal">obs</mtext></msub><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(o_x, o_y, b_{\text{obs}})</annotation></semantics></math>
+with the network’s prediction while leaving all other channels
+identical. This is what lets a privileged-trained policy be fine-tuned
+to drive from vision with minimal architectural change.</p>
+<h2 id="training-srctrain.py">Training: <code>src/train.py</code></h2>
+<h4
+id="warm_start_pathscenario"><code>warm_start_path(scenario)</code></h4>
+<p>Returns the path of the policy a new run should warm-start from,
+encoding the curriculum chain. Returns <code>None</code> when training
+should start from scratch (e.g. phase1).</p>
+<h4
+id="make_train_envscenario-n_envs-make_eval_envscenario-log_dir"><code>make_train_env(scenario, n_envs)</code>
+/ <code>make_eval_env(scenario, log_dir)</code></h4>
+<p>Construct the vectorised training environments and the monitored
+evaluation environment, respectively, wiring in the reward callback and
+scenario configuration.</p>
+<h4
+id="make_callbackseval_env-best_dir-log_dir-use_wandb-n_envs"><code>make_callbacks(eval_env, best_dir, log_dir, use_wandb, n_envs)</code></h4>
+<p>Assembles the Stable-Baselines3 callbacks: periodic evaluation with
+best-model saving, and (optionally) the Weights &amp; Biases callback.
+The best-by-evaluation snapshot is what evaluation later loads.</p>
+<h4 id="main"><code>main()</code></h4>
+<p>Orchestrates a training run: parse arguments, build environments,
+load or create the PPO model, attach callbacks and logging, train for
+the requested timesteps, and save the final model. When W&amp;B is
+enabled it also records the run URL to
+<code>logs/&lt;run&gt;/wandb_url.txt</code> so the GUI can open the
+exact run.</p>
+<h2 id="evaluation-srctest.py">Evaluation: <code>src/test.py</code></h2>
+<h4
+id="evaluatemodel_path-scenarios-render-episodes"><code>evaluate(model_path, scenarios, render, episodes)</code></h4>
+<p>Loads a saved policy and runs it for the requested number of episodes
+per scenario, reporting per-episode reward, step count, and checkpoint
+completion. With <code>render=True</code> it opens a PyBullet window so
+the car can be watched; with <code>render=False</code> it runs headless
+for fast batch evaluation.</p>
+<h1 id="logging-and-metrics">Logging and Metrics</h1>
+<p>Training writes TensorBoard scalar logs to
+<code>logs/&lt;gen&gt;_&lt;scenario&gt;_&lt;observation&gt;/</code>.
+Because training initialises W&amp;B with
+<code>sync_tensorboard=True</code>, those same scalars also sync to the
+configured W&amp;B project when logging is enabled. The GUI’s
+<em>Training Metrics</em> tab reads the local event files directly (no
+W&amp;B login required) and plots them live; the <em>Open in
+W&amp;B</em> button jumps to the online run when a URL was recorded.</p>
+<h1 id="known-behaviour">Known Behaviour</h1>
+<ul>
+<li><p><strong>Phase3 privileged policy is roughly 90%
+reliable.</strong> Over many episodes most are clean laps, with
+occasional catastrophic failures in awkward ramp or obstacle
+configurations.</p></li>
+<li><p><strong>Phase1 evaluation is deterministic.</strong> With no
+obstacles and a fixed spawn, a deterministic policy produces identical
+episodes — identical eval rewards are expected, not a bug.</p></li>
+<li><p><strong>Vision policies score somewhat below privileged.</strong>
+The CNN-derived observation is noisier than ground truth. A large gap
+suggests the CNN is not engaging; check the <code>vision_active</code>
+percentage reported by <code>test_vision.py</code>.</p></li>
+</ul>
+</body>
+</html>

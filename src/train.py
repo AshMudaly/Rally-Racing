@@ -47,13 +47,13 @@ from wandb.integration.sb3 import WandbCallback
 
 # ── Constants ─────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-GENERATION    = "gen3"          # bump when starting a new generation
+GENERATION    = "gen2"          # bump when starting a new generation
 WANDB_PROJECT = "rally-racing"
 
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
     batch_size    = 256,
-    ent_coef      = 0.02,
+    ent_coef      = 0.005,
     device        = "cpu",
     policy_kwargs = dict(net_arch=[256, 256]),
 )
@@ -83,19 +83,16 @@ except Exception as _e:
 
 
 WARM_START_CHAIN = {
-    "phase2":        "phase1",
-    "phase3":        "phase2",
-    "custom_easy":   "phase3",
-    "custom_medium": "custom_easy",
-    "custom":        "custom_medium",
+    "phase2": "phase1",
+    "phase3": "phase2",
+    "custom": "phase3",
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True,
-                    choices=["phase1", "phase2", "phase3",
-                             "custom_easy", "custom_medium", "custom"])
+                        choices=["phase1", "phase2", "phase3", "custom"])
     parser.add_argument("--timesteps", type=int, default=300_000)
     parser.add_argument("--n-envs", type=int, default=8)
     parser.add_argument("--no-wandb", action="store_true")
@@ -186,6 +183,13 @@ def main():
             sync_tensorboard=True,
             save_code=True,
         )
+        # Record the live run URL next to the logs so the control GUI's
+        # "Open in W&B" button can jump straight to this exact run.
+        try:
+            with open(os.path.join(log_dir, "wandb_url.txt"), "w") as _f:
+                _f.write(run.url)
+        except Exception:
+            pass
 
     env = make_train_env(args.scenario, args.n_envs)
     eval_env = make_eval_env(args.scenario, log_dir)

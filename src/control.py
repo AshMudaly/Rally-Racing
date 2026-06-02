@@ -49,6 +49,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import webbrowser
 from tkinter import ttk, filedialog, messagebox
 
 # config.py lives alongside this file in src/.
@@ -219,7 +220,7 @@ class ControlApp:
         self._bool_field(train_tab, "use_wandb",       "Log to Weights & Biases")
         self._text_field(train_tab, "wandb_project",   "W&B project name")
 
-        self._section(train_tab, "PPO hyperparameters")
+        self._section(train_tab, "PPO hyperparameters - Change With Care")
         self._float_field(train_tab, "learning_rate", "Learning rate")
         self._int_field(train_tab,   "batch_size",    "Batch size")
         self._float_field(train_tab, "ent_coef",      "Entropy coefficient")
@@ -273,6 +274,18 @@ class ControlApp:
 
     # ── runner (right) ───────────────────────────────────────────────────────
     def _build_runner(self, parent):
+        rnb = ttk.Notebook(parent)
+        rnb.pack(fill="both", expand=True)
+
+        run_tab     = ttk.Frame(rnb, padding=6)
+        metrics_tab = ttk.Frame(rnb, padding=2)
+        rnb.add(run_tab,     text="Run & Console")
+        rnb.add(metrics_tab, text="Training Metrics")
+
+        self._build_run_tab(run_tab)
+        self._build_metrics_tab(metrics_tab)
+
+    def _build_run_tab(self, parent):
         self._section(parent, "Pipeline stages")
         self.stage_vars = {}
         for pipeline in ("State-RL", "Vision"):
@@ -311,12 +324,30 @@ class ControlApp:
         self.console.pack(side="left", fill="both", expand=True)
         csb.pack(side="right", fill="y")
 
+    def _build_metrics_tab(self, parent):
+        # Lazy import so the GUI still launches if metrics_panel's deps shift.
+        try:
+            from metrics_panel import MetricsPanel
+            self.metrics = MetricsPanel(
+                parent, BASE_DIR,
+                generation="gen2",
+                wandb_project_getter=lambda: self._tk_vars["wandb_project"][1].get())
+            self.metrics.pack(fill="both", expand=True)
+        except Exception as e:
+            self.metrics = None
+            ttk.Label(parent,
+                      text=f"Metrics panel unavailable: {e}",
+                      foreground="#b00").pack(padx=8, pady=8)
+
     def _build_statusbar(self, parent):
         self.status = tk.StringVar(value="Idle.")
         bar = ttk.Frame(parent)
         bar.pack(fill="x", pady=(6, 0))
         ttk.Separator(parent, orient="horizontal").pack(fill="x")
         ttk.Label(bar, textvariable=self.status, anchor="w").pack(side="left")
+        # Guide + W&B quick buttons live on the status bar, always visible.
+        ttk.Button(bar, text="📖 System Guide",
+                   command=self.open_guide).pack(side="right")
 
     # ── field helpers ─────────────────────────────────────────────────────────
     def _section(self, parent, text):
@@ -447,6 +478,27 @@ class ControlApp:
             cfg["test_scenarios"] = ["phase1"]
         return cfg
 
+    # ── system guide ────────────────────────────────────────────────────────
+    def open_guide(self):
+        """Open the LaTeX-derived HTML system guide in the default browser.
+
+        The guide ships pre-built at docs/system_guide.html so no LaTeX
+        toolchain is needed on the user's machine. Opened as a file:// URL via
+        the OS default browser."""
+        guide = os.path.join(BASE_DIR, "docs", "system_guide.html")
+        if not os.path.exists(guide):
+            messagebox.showwarning(
+                "Guide not found",
+                "The system guide (docs/system_guide.html) is missing.\n\n"
+                "It ships pre-built; if you cloned without it, rebuild from "
+                "docs/system_guide.tex (see the docs/ folder).")
+            return
+        try:
+            webbrowser.open("file://" + os.path.abspath(guide))
+            self.status.set("Opened system guide in your browser.")
+        except Exception as e:
+            messagebox.showerror("Could not open guide", str(e))
+
     # ── config buttons ────────────────────────────────────────────────────────
     def save_settings(self):
         try:
@@ -532,7 +584,8 @@ class ControlApp:
 
         # Ensure src/ is importable by child scripts (config, reward, vision).
         env = os.environ.copy()
-        env["PYTHONPATH"] = SRC_DIR + os.pathsep + env.get("PYTHONPATH", "")
+        extra = os.pathsep.join([SRC_DIR, BASE_DIR])
+        env["PYTHONPATH"] = extra + os.pathsep + env.get("PYTHONPATH", "")
         env["PYTHONUNBUFFERED"] = "1"
         try:
             self.proc = subprocess.Popen(
@@ -618,6 +671,8 @@ class ControlApp:
                                        "A stage is still running. Kill it and quit?"):
                 return
             self.stop_run()
+        if getattr(self, "metrics", None) is not None:
+            self.metrics.stop()
         self.root.destroy()
 
 

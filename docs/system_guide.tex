@@ -1,0 +1,322 @@
+\documentclass[11pt]{article}
+
+% ============================================================================
+%  Rally-Racing — System Guide (LaTeX source)
+%
+%  This is the editable source for the HTML system guide opened by the GUI's
+%  "System Guide" button. To regenerate the HTML after editing:
+%
+%      make4ht system_guide.tex            (TeX4ht; produces system_guide.html)
+%  or  pandoc system_guide.tex -s -o system_guide.html --mathjax
+%
+%  The repository ships a pre-built docs/system_guide.html so end users do not
+%  need a LaTeX toolchain. Rebuild only if you change this source.
+% ============================================================================
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Rally-Racing --- System Guide}
+\author{Operation, Architecture, and Function Reference}
+\date{}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+% ----------------------------------------------------------------------------
+\section{Overview}
+
+Rally-Racing is a PyBullet driving environment trained with Proximal Policy
+Optimization (PPO). A car learns to pass a sequence of checkpoints while
+avoiding obstacles and handling ramps. The project supports two observation
+regimes:
+
+\begin{itemize}
+  \item \textbf{Privileged observation} --- the policy receives the
+        ground-truth position of the nearest obstacle directly from the
+        simulator.
+  \item \textbf{Vision observation} --- a convolutional network
+        (\texttt{ObstacleCNN}) infers obstacle presence and location from the
+        car's camera, and those predictions replace the privileged obstacle
+        channels. A privileged policy is fine-tuned into a vision policy.
+\end{itemize}
+
+Training follows a curriculum of increasingly difficult scenarios, and the
+whole system can be operated either from the command line (manual operation)
+or through the Tkinter control panel (GUI operation). Both are described in
+Section~\ref{sec:operation}.
+
+% ----------------------------------------------------------------------------
+\section{The Curriculum}
+
+The scenarios build on one another. Each privileged policy warm-starts from
+the previous scenario's privileged policy.
+
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Scenario} & \textbf{Track contents} \\
+\hline
+phase1 & 6 checkpoints, no obstacles, no ramps \\
+phase2 & 6 checkpoints + 4 obstacles \\
+phase3 & 6 checkpoints + 4 obstacles + 2 ramps \\
+custom & bespoke checkpoint / obstacle / ramp lists \\
+\end{tabular}
+\end{center}
+
+Warm-start chain: $\text{phase1} \rightarrow \text{phase2} \rightarrow
+\text{phase3} \rightarrow \text{custom}$. A \emph{vision} policy for a given
+scenario warm-starts from that scenario's \emph{privileged} policy, not from a
+previous vision policy.
+
+% ----------------------------------------------------------------------------
+\section{Operation}\label{sec:operation}
+
+\subsection{GUI operation (recommended)}
+
+The control panel (\texttt{src/control.py}) exposes every setting and runs
+every pipeline stage without touching source code. Launch it by
+double-clicking the \emph{Rally-Racing Control Panel} icon (after running
+\texttt{install\_desktop.sh} once), or from a terminal:
+
+\begin{verbatim}
+./launch.sh
+\end{verbatim}
+
+The panel is organised into a settings area (left) and a run area (right):
+
+\begin{itemize}
+  \item \textbf{Training tab} --- total timesteps, parallel environments,
+        scenario, PPO hyperparameters, and Weights \& Biases logging.
+  \item \textbf{Reward weights tab} --- every coefficient in
+        \texttt{RewardConfig} (Section~\ref{sec:reward}), editable live.
+  \item \textbf{Vision tab} --- dataset collection size, CNN training
+        settings, and vision fine-tune budget.
+  \item \textbf{Evaluation tab} --- scenarios to evaluate, episode count,
+        whether to open the simulator window, and the model file to load.
+  \item \textbf{Run \& Console tab} --- run any stage individually, or tick
+        several and run them in succession; live output streams to the
+        console.
+  \item \textbf{Training Metrics tab} --- live plots of episode reward, loss,
+        and other scalars read from the local TensorBoard logs, plus an
+        \emph{Open in W\&B} button for the full online dashboard.
+\end{itemize}
+
+Settings are saved to \texttt{gui\_config.json}, which the training scripts
+read at runtime. Nothing is hardcoded in two places.
+
+\subsection{Manual operation (command line)}
+
+Every stage is also a standalone CLI script. The GUI is a convenience layer
+over exactly these commands; the scripts remain fully usable on their own.
+
+\paragraph{Privileged training.}
+\begin{verbatim}
+python3 src/train.py --scenario phase1
+python3 src/train.py --scenario phase3 --timesteps 150000 --no-wandb
+python3 src/train.py --scenario phase3 --fresh   # ignore warm-start chain
+\end{verbatim}
+
+\paragraph{Vision fine-tune} (requires the matching privileged model):
+\begin{verbatim}
+python3 src/train_vision.py --scenario phase3
+python3 src/train_vision.py --scenario phase3 --timesteps 200000
+\end{verbatim}
+
+\paragraph{Evaluation} (omit \texttt{--no-render} to watch in a window):
+\begin{verbatim}
+python3 src/test.py --model gen2_models/phase3/privileged/best/best_model.zip \
+    --scenarios phase3 --episodes 20 --no-render
+python3 src/test_vision.py --ppo gen2_models/phase3/vision/best/best_model.zip \
+    --scenarios phase3 --episodes 20 --no-render
+\end{verbatim}
+
+\paragraph{Relationship between the two.} A GUI ``Run'' button builds and
+launches the corresponding command above as a subprocess, passing your saved
+settings via \texttt{gui\_config.json} and command-line arguments. Manual and
+GUI operation therefore produce identical runs; the GUI simply removes the
+need to remember flags and paths.
+
+% ----------------------------------------------------------------------------
+\section{Architecture and Key Functions}
+
+This section documents the important functions across the package, grouped by
+module.
+
+\subsection{Environment: \texttt{simple\_driving/envs/rally\_driving\_env.py}}
+
+\paragraph{\texttt{RallyDrivingEnv.reset(seed, options)}}
+Re-initialises an episode: respawns the car at the scenario's start pose,
+rebuilds the checkpoint list, and (for phase2/phase3) spawns obstacles and
+ramps. Returns the initial observation. The random seed makes obstacle
+placement reproducible.
+
+\paragraph{\texttt{RallyDrivingEnv.step(action)}}
+Advances the simulation by one control step. It applies the action, steps
+PyBullet, computes the reward through the injected
+\texttt{reward\_callback}, checks termination, and returns the tuple
+$(\text{obs}, \text{reward}, \text{done}, \text{truncated}, \text{info})$.
+If no reward callback was supplied it raises, by design --- the environment
+never silently scores episodes with a default reward.
+
+\paragraph{\texttt{RallyDrivingEnv.getExtendedObservation()}}
+Builds the 11-dimensional observation vector the policy consumes:
+\[
+[\, g_x,\ g_y,\ c_{\text{rem}},\ o_x,\ o_y,\ b_{\text{obs}},\
+      \theta_{\text{pitch}},\ \theta_{\text{roll}},\ v,\
+      \cos\psi,\ \sin\psi \,]
+\]
+where $(g_x,g_y)$ is the next checkpoint in the car's local frame,
+$c_{\text{rem}}$ is the fraction of checkpoints remaining, $(o_x,o_y)$ is the
+nearest obstacle in the local frame, $b_{\text{obs}}$ is a $0/1$ flag for
+whether an obstacle exists, $\theta_{\text{pitch}}$ and $\theta_{\text{roll}}$
+are chassis angles, $v$ is planar speed, and $(\cos\psi,\sin\psi)$ encodes
+heading without a wrap discontinuity. Transforming the goal and obstacle into
+the car's local frame makes the policy translation- and rotation-invariant.
+
+\paragraph{\texttt{RallyDrivingEnv.get\_camera\_image(width, height)}}
+Renders the car's onboard camera view. Purely additive: it does not affect
+\texttt{step}, \texttt{reset}, or the reward, so it can be used for vision data
+collection without altering training dynamics.
+
+\paragraph{\texttt{RallyDrivingEnv.\_nearest\_obstacle(car\_pos)}}
+Returns the closest obstacle and its distance, used both for the observation
+and for the close-contact reward term.
+
+\subsection{Reward: \texttt{src/reward.py}}\label{sec:reward}
+
+\paragraph{\texttt{RewardConfig}}
+A dataclass-like container of every reward coefficient (goal reward, obstacle
+penalty, progress scale, smoothness penalties, repulsive-field parameters,
+airborne bonus). The GUI edits these values; the environment never hardcodes
+them.
+
+\paragraph{\texttt{RewardCalculator.\_\_call\_\_(\dots)}}
+Computes the scalar reward for one step. The total is a sum of independent
+terms:
+\[
+r = r_{\text{prog}} + r_{\text{reg}} + r_{\text{goal}} + r_{\text{smooth}}
+  + r_{\text{coll}} + r_{\text{rep}} + r_{\text{oob}} + r_{\text{air}}
+\]
+where each term contributes as follows:
+\begin{itemize}
+  \item \textbf{Progress} $r_{\text{prog}} = r_{\text{step}} + k_{\text{prog}}\,\Delta d$,
+        a constant per-step cost plus a bonus proportional to the reduction in
+        distance to the goal $\Delta d$.
+  \item \textbf{Regression} $r_{\text{reg}} = r_{\text{reg}}$ when $\Delta d < 0$,
+        an extra penalty for moving away from the goal. It fires in all
+        scenarios (including phase1) so the agent always pays for zigzagging.
+  \item \textbf{Checkpoint} $r_{\text{goal}}$ added once when a checkpoint is
+        reached.
+  \item \textbf{Smoothness / stability}
+        $r_{\text{smooth}} = k_{\text{yaw}}\,|j_\psi|
+         + k_{\text{roll}}\,|\Delta\theta_r| + k_{\text{pitch}}\,|\Delta\theta_p|$,
+        penalising yaw jerk $j_\psi$ (the change in yaw rate) and roll / pitch
+        changes between steps.
+  \item \textbf{Collision} $r_{\text{coll}}$ applied when the nearest obstacle
+        is within the minimum safe distance.
+  \item \textbf{Repulsive field}
+        $r_{\text{rep}} = -k_{\text{rep}} \sum_i \max(0,\ R - d_i)$,
+        a soft penalty that grows as the car approaches any obstacle within
+        radius $R$, discouraging skimming even without a collision.
+  \item \textbf{Boundary} $r_{\text{oob}}$ applied when the car leaves the
+        world bounds.
+  \item \textbf{Airborne} $r_{\text{air}}$, a small phase3 bonus for being
+        pitched up while still making forward progress (rewarding committed
+        ramp jumps).
+\end{itemize}
+
+\paragraph{\texttt{RewardCalculator.\_wrap\_delta(delta)}}
+Wraps an angular difference into $[-\pi, \pi]$ so heading changes near the
+$\pm\pi$ boundary are measured correctly rather than as near-full rotations.
+
+\paragraph{\texttt{custom\_reward(**kwargs)}}
+Module-level functional wrapper around a default \texttt{RewardCalculator},
+used as the environment's \texttt{reward\_callback}.
+
+\subsection{Vision: \texttt{vision/model.py}}
+
+\paragraph{\texttt{ObstacleCNN.forward(x)}}
+Runs the convolutional stack over a camera frame and returns the raw network
+outputs (logits / regressed coordinates) describing whether an obstacle is
+visible and where.
+
+\paragraph{\texttt{ObstacleCNN.predict(x)}}
+Inference wrapper around \texttt{forward} that converts raw outputs into the
+obstacle-presence flag and local position estimate the vision environment
+substitutes into the observation vector.
+
+\subsection{Vision environment: \texttt{simple\_driving/envs/vision\_rally\_env.py}}
+
+\paragraph{\texttt{VisionRallyDrivingEnv.getExtendedObservation()}}
+Overrides the privileged observation: it captures a camera frame, runs the
+CNN, and replaces the obstacle channels the obstacle channels $(o_x, o_y, b_{\text{obs}})$
+with the network's prediction while leaving all other channels identical. This
+is what lets a privileged-trained policy be fine-tuned to drive from vision
+with minimal architectural change.
+
+\subsection{Training: \texttt{src/train.py}}
+
+\paragraph{\texttt{warm\_start\_path(scenario)}}
+Returns the path of the policy a new run should warm-start from, encoding the
+curriculum chain. Returns \texttt{None} when training should start from
+scratch (e.g. phase1).
+
+\paragraph{\texttt{make\_train\_env(scenario, n\_envs)} /
+\texttt{make\_eval\_env(scenario, log\_dir)}}
+Construct the vectorised training environments and the monitored evaluation
+environment, respectively, wiring in the reward callback and scenario
+configuration.
+
+\paragraph{\texttt{make\_callbacks(eval\_env, best\_dir, log\_dir, use\_wandb, n\_envs)}}
+Assembles the Stable-Baselines3 callbacks: periodic evaluation with best-model
+saving, and (optionally) the Weights \& Biases callback. The
+best-by-evaluation snapshot is what evaluation later loads.
+
+\paragraph{\texttt{main()}}
+Orchestrates a training run: parse arguments, build environments, load or
+create the PPO model, attach callbacks and logging, train for the requested
+timesteps, and save the final model. When W\&B is enabled it also records the
+run URL to \texttt{logs/<run>/wandb\_url.txt} so the GUI can open the exact run.
+
+\subsection{Evaluation: \texttt{src/test.py}}
+
+\paragraph{\texttt{evaluate(model\_path, scenarios, render, episodes)}}
+Loads a saved policy and runs it for the requested number of episodes per
+scenario, reporting per-episode reward, step count, and checkpoint completion.
+With \texttt{render=True} it opens a PyBullet window so the car can be watched;
+with \texttt{render=False} it runs headless for fast batch evaluation.
+
+% ----------------------------------------------------------------------------
+\section{Logging and Metrics}
+
+Training writes TensorBoard scalar logs to
+\texttt{logs/<gen>\_<scenario>\_<observation>/}. Because training initialises
+W\&B with \texttt{sync\_tensorboard=True}, those same scalars also sync to the
+configured W\&B project when logging is enabled. The GUI's
+\emph{Training Metrics} tab reads the local event files directly (no W\&B login
+required) and plots them live; the \emph{Open in W\&B} button jumps to the
+online run when a URL was recorded.
+
+% ----------------------------------------------------------------------------
+\section{Known Behaviour}
+
+\begin{itemize}
+  \item \textbf{Phase3 privileged policy is roughly 90\% reliable.} Over many
+        episodes most are clean laps, with occasional catastrophic failures in
+        awkward ramp or obstacle configurations.
+  \item \textbf{Phase1 evaluation is deterministic.} With no obstacles and a
+        fixed spawn, a deterministic policy produces identical episodes ---
+        identical eval rewards are expected, not a bug.
+  \item \textbf{Vision policies score somewhat below privileged.} The
+        CNN-derived observation is noisier than ground truth. A large gap
+        suggests the CNN is not engaging; check the \texttt{vision\_active}
+        percentage reported by \texttt{test\_vision.py}.
+\end{itemize}
+
+\end{document}

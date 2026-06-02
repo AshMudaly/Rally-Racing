@@ -132,6 +132,11 @@ def main():
             sync_tensorboard=True,
             save_code=True,
         )
+        try:
+            with open(os.path.join(log_dir, "wandb_url.txt"), "w") as _f:
+                _f.write(run.url)
+        except Exception:
+            pass
 
     cnn = load_cnn()
 

@@ -1,0 +1,84 @@
+/* system_guide.css — theme for the Rally-Racing HTML system guide */
+:root {
+  --bg: #0f1115;
+  --panel: #161a22;
+  --text: #d7dde5;
+  --muted: #8b95a4;
+  --accent: #4aa3ff;
+  --accent-2: #6ee7b7;
+  --border: #262c38;
+  --code-bg: #1b2029;
+}
+
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65;
+  max-width: 50em;
+  margin: 0 auto;
+  padding: 48px 32px 96px;
+  background: var(--bg);
+}
+
+h1, h2, h3 { color: #fff; line-height: 1.25; font-weight: 650; }
+h1 {
+  font-size: 2.1em; margin-bottom: 0.1em;
+  border-bottom: 3px solid var(--accent); padding-bottom: 0.3em;
+}
+h2 {
+  font-size: 1.5em; margin-top: 2em;
+  border-bottom: 1px solid var(--border); padding-bottom: 0.25em;
+}
+h3 { font-size: 1.15em; margin-top: 1.6em; color: var(--accent-2); }
+.author { color: var(--muted); font-style: italic; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+p, li { color: var(--text); }
+strong { color: #fff; }
+em { color: var(--accent-2); font-style: normal; }
+
+code {
+  background: var(--code-bg);
+  color: #e6c07b;
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+pre code { background: none; color: #c9d1d9; padding: 0; }
+
+table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+th { background: var(--panel); color: #fff; }
+tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+/* Table of contents */
+#TOC, nav#TOC {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 24px;
+  margin: 1.5em 0 2.5em;
+}
+#TOC ul { list-style: none; padding-left: 1.2em; }
+#TOC > ul { padding-left: 0; }
+#TOC a { color: var(--text); }
+#TOC a:hover { color: var(--accent); }
+
+/* MathJax display blocks shouldn't overflow on mobile */
+mjx-container { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+
+blockquote {
+  border-left: 3px solid var(--accent-2);
+  margin-left: 0; padding-left: 16px; color: var(--muted);
+}

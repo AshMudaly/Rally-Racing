@@ -1,0 +1,48 @@
+{
+  "total_timesteps": 300000,
+  "n_envs": 8,
+  "scenario": "phase3",
+  "load_previous": true,
+  "reset_timesteps": true,
+  "use_wandb": true,
+  "wandb_project": "rally-racing",
+  "learning_rate": 0.0003,
+  "batch_size": 256,
+  "ent_coef": 0.005,
+  "net_arch": [
+    256,
+    256
+  ],
+  "device": "cpu",
+  "reward": {
+    "GOAL_REWARD": 100.0,
+    "OBSTACLE_PENALTY": -100.0,
+    "OUT_OF_BOUNDS": -50.0,
+    "WORLD_BOUNDARY": 30.0,
+    "STEP_PENALTY": -2.0,
+    "PROGRESS_SCALE": 5.0,
+    "REGRESSION_PENALTY": -10.0,
+    "YAW_JERK_PENALTY": -8.0,
+    "ROLL_DELTA_PENALTY": -15.0,
+    "PITCH_DELTA_PENALTY": -4.0,
+    "MIN_SAFE_DISTANCE": 1.0,
+    "REPULSE_RADIUS": 2.5,
+    "REPULSE_SCALE": 10.0,
+    "AIRBORNE_PITCH_THRESHOLD": 0.2,
+    "AIRBORNE_BONUS": 1.0
+  },
+  "collect_n": 10000,
+  "collect_seed": 0,
+  "cnn_epochs": 30,
+  "cnn_batch": 64,
+  "cnn_lr": 0.001,
+  "vision_timesteps": 100000,
+  "test_scenarios": [
+    "phase1",
+    "phase2",
+    "phase3"
+  ],
+  "test_episodes": 1,
+  "render": true,
+  "test_model": "/home/alec/Git/Rally-Racing/gen2_models/phase3/privileged/best/best_model.zip"
+}

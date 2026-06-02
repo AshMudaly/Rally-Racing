@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Rally-Racing Control Panel
+Comment=Train, evaluate, and visualise the PyBullet rally-racing RL project
+# IMPORTANT: Exec must be an ABSOLUTE path. After copying this file, either
+#   (a) edit the two paths below to match where you cloned the project, or
+#   (b) run  ./install_desktop.sh  which fills them in automatically.
+Exec=/ABSOLUTE/PATH/TO/Rally-Racing/launch.sh
+Path=/ABSOLUTE/PATH/TO/Rally-Racing
+Icon=/ABSOLUTE/PATH/TO/Rally-Racing/docs/icon.png
+Terminal=false
+Categories=Science;Education;Development;
+Keywords=reinforcement-learning;pybullet;ppo;rally;
