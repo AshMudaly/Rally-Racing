@@ -85,6 +85,59 @@ class RewardCalculator:
         prev_pitch=0.0, current_pitch=0.0,
         obstacle_positions=None, scenario="phase1",
     ) -> float:
+        r"""Return the scalar reward for one environment step.
+
+        The reward is a sum of independent terms,
+
+        .. math::
+
+            r = r_{\text{prog}} + r_{\text{reg}} + r_{\text{goal}}
+                + r_{\text{smooth}} + r_{\text{coll}} + r_{\text{rep}}
+                + r_{\text{oob}} + r_{\text{air}}
+
+        with, letting :math:`\Delta d = d_{\text{prev}} - d` be the reduction
+        in distance to the active checkpoint,
+
+        .. math::
+
+            r_{\text{prog}}   &= r_{\text{step}} + k_{\text{prog}}\,\Delta d \\
+            r_{\text{reg}}    &= r_{\text{reg}}\,\mathbf{1}[\Delta d < 0] \\
+            r_{\text{goal}}   &= r_{\text{goal}}\,\mathbf{1}[\text{reached}] \\
+            r_{\text{smooth}} &= k_{\psi}\,|j_\psi|
+                                 + k_{r}\,|\Delta\theta_r|
+                                 + k_{p}\,|\Delta\theta_p| \\
+            r_{\text{coll}}   &= r_{\text{obs}}\,
+                                 \mathbf{1}[d_{\text{obs}} \le d_{\min}] \\
+            r_{\text{rep}}    &= -k_{\text{rep}}
+                                 \sum_i \max(0,\ R - d_i) \\
+            r_{\text{oob}}    &= r_{\text{oob}}\,
+                                 \mathbf{1}[\,|x| > B \ \lor\ |y| > B\,] \\
+            r_{\text{air}}    &= r_{\text{air}}\,
+                                 \mathbf{1}[\text{phase3} \land
+                                 \theta_p > \theta_{\text{air}} \land \Delta d>0]
+
+        Here :math:`j_\psi` is the yaw *jerk* (change in yaw rate, computed via
+        :meth:`_wrap_delta` to stay in :math:`[-\pi,\pi]`),
+        :math:`\Delta\theta_r,\Delta\theta_p` are roll/pitch increments,
+        :math:`d_i` is the planar distance to obstacle :math:`i`, :math:`R` the
+        repulsion radius, and :math:`B` the world half-extent. The coefficients
+        :math:`k_\bullet` and offsets :math:`r_\bullet` are the attributes of
+        :class:`RewardConfig`.
+
+        The regression term fires in every scenario (including obstacle-free
+        ``phase1``) so the agent always pays for moving away from the goal; the
+        repulsive field penalises *proximity* to obstacles, not only contact.
+
+        :param car_pos: car position :math:`(x, y, z)` in world coordinates.
+        :param obstacle_pos: nearest obstacle position, or ``None``.
+        :param has_obstacle: whether the scenario contains obstacles.
+        :param prev_dist_to_goal: :math:`d_{\text{prev}}` (``None`` on step 0).
+        :param dist_to_goal: :math:`d`, current distance to the checkpoint.
+        :param reached_goal: whether the active checkpoint was reached this step.
+        :param obstacle_positions: all obstacle positions, for the repulsion sum.
+        :param scenario: scenario name; gates the phase3 airborne bonus.
+        :returns: the scalar step reward :math:`r`.
+        """
         cfg = self.cfg
         reward = 0.0
 
@@ -140,7 +193,15 @@ class RewardCalculator:
 
     @staticmethod
     def _wrap_delta(delta: float) -> float:
-        """Wrap an angular difference into [-pi, pi]."""
+        r"""Wrap an angular difference into :math:`[-\pi, \pi]`.
+
+        Maps :math:`\delta \mapsto \delta - 2\pi\,\operatorname{round}
+        (\delta / 2\pi)` (implemented by branch) so that, e.g., a heading
+        change from :math:`+0.99\pi` to :math:`-0.99\pi` is measured as the
+        small step :math:`\approx 0.02\pi` rather than a near-full rotation.
+        Essential for the yaw-jerk and roll/pitch smoothness terms to be
+        physically meaningful near the :math:`\pm\pi` branch cut.
+        """
         if delta > math.pi:
             return delta - 2 * math.pi
         if delta < -math.pi:
@@ -153,4 +214,11 @@ _default_calculator = RewardCalculator()
 
 
 def custom_reward(**kwargs) -> float:
+    r"""Module-level :func:`reward_callback` wrapper.
+
+    Forwards keyword arguments to a shared :class:`RewardCalculator` instance,
+    giving the environment a plain callable :math:`r = f(\cdot)` without having
+    to manage calculator state itself. See :meth:`RewardCalculator.__call__`
+    for the reward definition.
+    """
     return _default_calculator(**kwargs)

@@ -142,7 +142,15 @@ def _iter_tfrecords(data):
 
 # ── public API ───────────────────────────────────────────────────────────────
 def read_scalars(path):
-    """Return {tag: [(step, wall_time, value), …]} for one event file."""
+    r"""Parse one event file into ``{tag: [(step, wall_time, value), ...]}``.
+
+    Iterates the file's TFRecords and decodes each ``Event`` protobuf, keeping
+    only scalar summaries. The result maps each metric tag (e.g.
+    ``rollout/ep_rew_mean``) to its time series of triples
+    :math:`(s_i, t_i, x_i)` — training step, wall-clock time, and value — in
+    file order. Malformed or partially-written records are skipped, so the
+    function is safe to call on a file SB3 is still appending to.
+    """
     series = {}
     try:
         with open(path, "rb") as f:

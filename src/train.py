@@ -90,6 +90,12 @@ WARM_START_CHAIN = {
 
 
 def parse_args():
+    r"""Parse command-line arguments for a privileged training run.
+
+    Exposes the scenario (required), the timestep budget :math:`T`, the number
+    of parallel environments :math:`N`, and flags to disable W&B logging or
+    force training from scratch (ignoring the warm-start chain).
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True,
                         choices=["phase1", "phase2", "phase3", "custom"])
@@ -102,8 +108,16 @@ def parse_args():
 
 
 def warm_start_path(scenario):
-    """Return the path the given scenario should warm-start from, or None
-    if no parent exists in the curriculum."""
+    r"""Return the policy file the given scenario warm-starts from.
+
+    Encodes the curriculum chain
+    :math:`\text{phase1}\to\text{phase2}\to\text{phase3}\to\text{custom}`:
+    a run for scenario :math:`s` resumes from the *best* privileged policy of
+    its parent :math:`\pi(s)`, transferring learned driving skill so each new
+    scenario only has to learn the incremental difficulty (obstacles, then
+    ramps). Returns ``None`` when :math:`s` has no parent (``phase1``), i.e.
+    training starts from scratch.
+    """
     parent = WARM_START_CHAIN.get(scenario)
     if parent is None:
         return None
@@ -112,6 +126,15 @@ def warm_start_path(scenario):
 
 
 def make_train_env(scenario, n_envs):
+    r"""Build the vectorised training environment.
+
+    Returns a :class:`SubprocVecEnv` of :math:`N` (``n_envs``) independent
+    ``RallyDriving-v0`` instances running in separate processes, so PPO
+    collects :math:`N` trajectories in parallel each rollout — roughly an
+    :math:`N\times` throughput gain on the (CPU-bound) PyBullet stepping. Each
+    instance uses :func:`custom_reward` as its reward callback. Rendering is
+    off for speed.
+    """
     def factory():
         return gym.make("RallyDriving-v0",
                         renders=False, isDiscrete=False,
@@ -122,6 +145,14 @@ def make_train_env(scenario, n_envs):
 
 
 def make_eval_env(scenario, log_dir):
+    r"""Build the single-instance evaluation environment.
+
+    A one-env :class:`DummyVecEnv` wrapped in :class:`Monitor` so episode
+    returns and lengths are logged to ``log_dir``. Kept separate from the
+    training envs so periodic evaluation (see :func:`make_callbacks`) measures
+    a clean, deterministic estimate of policy quality, uncontaminated by
+    exploration noise.
+    """
     def factory():
         env = gym.make("RallyDriving-v0",
                        renders=False, isDiscrete=False,
@@ -133,6 +164,15 @@ def make_eval_env(scenario, log_dir):
 
 
 def make_callbacks(eval_env, best_dir, log_dir, use_wandb, n_envs):
+    r"""Assemble the Stable-Baselines3 training callbacks.
+
+    Builds an :class:`EvalCallback` that evaluates the policy every
+    :math:`\lfloor 20{,}000 / N \rfloor` PPO steps (so the wall-clock cadence
+    is roughly constant in the number of parallel envs :math:`N`) over 10
+    deterministic episodes, saving the highest-scoring snapshot to ``best_dir``
+    — this *best-by-evaluation* model is what evaluation later loads. Appends a
+    :class:`WandbCallback` when ``use_wandb`` is set.
+    """
     callbacks = [
         EvalCallback(
             eval_env,
@@ -150,6 +190,16 @@ def make_callbacks(eval_env, best_dir, log_dir, use_wandb, n_envs):
 
 
 def main():
+    r"""Run one privileged-observation PPO training session.
+
+    Pipeline: parse args :math:`\to` resolve output/log dirs :math:`\to` init
+    W&B (recording the run URL for the GUI) :math:`\to` build the parallel
+    train env and the eval env :math:`\to` either warm-start from the parent
+    scenario's best policy (see :func:`warm_start_path`) or create a fresh PPO
+    model :math:`\to` train for :math:`T` timesteps with periodic evaluation
+    and best-model saving :math:`\to` save the final policy. Scalars are logged
+    to TensorBoard at ``logs/<gen>_<scenario>_privileged/`` and synced to W&B.
+    """
     args = parse_args()
     use_wandb = not args.no_wandb
 

@@ -50,6 +50,13 @@ CNN_PATH      = os.path.join(BASE_DIR, "vision", "cnn_obstacle.pt")
 
 
 def parse_args():
+    r"""Parse arguments for a vision fine-tune run.
+
+    Like :func:`train.parse_args` but the scenario is restricted to those with
+    obstacles (``phase2``/``phase3``/``custom`` — ``phase1`` has nothing for
+    the CNN to detect) and the default budget :math:`T` is smaller, since this
+    is a fine-tune of an existing policy rather than training from scratch.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True,
                         choices=["phase2", "phase3", "custom"])
@@ -60,12 +67,25 @@ def parse_args():
 
 
 def warm_start_path(scenario):
-    """Vision policies warm-start from the privileged policy of the same scenario."""
+    r"""Return the privileged policy this vision run fine-tunes from.
+
+    Unlike the privileged curriculum (which chains across scenarios), a vision
+    policy for scenario :math:`s` warm-starts from the *privileged* policy of
+    the **same** scenario :math:`s`. The policy thus inherits a controller that
+    already drives :math:`s` well from ground-truth obstacle state, and
+    fine-tuning only has to adapt it to the noisier CNN-derived estimate.
+    """
     return os.path.join(BASE_DIR, f"{GENERATION}_models", scenario,
                         "privileged", "best", "best_model.zip")
 
 
 def load_cnn():
+    r"""Load and freeze the obstacle CNN used to populate vision observations.
+
+    Returns the :class:`ObstacleCNN` in eval mode. During fine-tuning the CNN
+    is held fixed (only the PPO policy updates), so it acts as a static
+    perception front-end mapping camera frames to obstacle estimates.
+    """
     if not os.path.exists(CNN_PATH):
         sys.exit(f"CNN weights not found at {CNN_PATH}")
     model = ObstacleCNN()
@@ -75,6 +95,14 @@ def load_cnn():
 
 
 def make_env(cnn, scenario, log_dir):
+    r"""Build a factory for one monitored ``VisionRallyDriving-v0`` instance.
+
+    The returned closure constructs a vision env wired to the frozen ``cnn``
+    and a visibility threshold :math:`\tau = 0.5`: at each step the CNN's
+    obstacle prediction replaces the privileged obstacle channels of the
+    observation vector when :math:`p_{\text{vis}} > \tau`. Returns the factory
+    (not the env) for use by the vectorised-env constructors.
+    """
     def factory():
         env = gym.make(
             "VisionRallyDriving-v0",
@@ -91,6 +119,16 @@ def make_env(cnn, scenario, log_dir):
 
 
 def main():
+    r"""Run one vision fine-tune session.
+
+    Loads the frozen obstacle CNN, warm-starts PPO from the same scenario's
+    privileged best model (see :func:`warm_start_path`), and continues training
+    for :math:`T` timesteps on ``VisionRallyDriving-v0`` — where observations
+    carry CNN-inferred obstacle channels instead of ground truth. The policy
+    adapts to perception noise while retaining its driving competence. Logs to
+    ``logs/<gen>_<scenario>_vision/`` and, when enabled, syncs to W&B (recording
+    the run URL for the GUI).
+    """
     args = parse_args()
     use_wandb = not args.no_wandb
 

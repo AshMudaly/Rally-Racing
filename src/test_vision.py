@@ -36,6 +36,13 @@ DEFAULT_CNN = os.path.join(BASE_DIR, "vision", "cnn_obstacle.pt")
 
 
 def load_cnn(path: str) -> ObstacleCNN:
+    r"""Load the trained :class:`ObstacleCNN` weights for inference.
+
+    Instantiates the network, loads the ``state_dict`` from ``path`` onto CPU,
+    and switches to eval mode (disabling dropout / freezing batch-norm running
+    stats) so the obstacle predictions :math:`\hat{y} = f_\theta(I)` are
+    deterministic. Exits if the weights file is absent.
+    """
     if not os.path.exists(path):
         sys.exit(f"CNN weights not found: {path}")
     model = ObstacleCNN()
@@ -46,6 +53,12 @@ def load_cnn(path: str) -> ObstacleCNN:
 
 
 def resolve_ppo(path: str) -> str:
+    r"""Return a usable PPO weights path, falling back if the primary is absent.
+
+    Prefers ``path``; if missing, uses the module ``FALLBACK`` model when it
+    exists; otherwise exits. Lets evaluation degrade gracefully to a known-good
+    policy instead of failing outright.
+    """
     if os.path.exists(path):
         return path
     if os.path.exists(FALLBACK):
@@ -55,7 +68,26 @@ def resolve_ppo(path: str) -> str:
 
 
 def run_episode(env, model, render: bool):
-    """One episode. Returns (total_reward, steps, checkpoints, collided, vis_frac)."""
+    r"""Run one deterministic vision-policy episode.
+
+    Steps the env until termination using greedy actions, accumulating the
+    return :math:`G = \sum_t r_t`. Each step also records whether the CNN
+    "fired" — i.e. whether its predicted obstacle-visible probability exceeds
+    the env threshold, :math:`p_{\text{vis}} > \tau` — and reports the
+    *active fraction*
+
+    .. math::
+
+        v = \frac{1}{T}\sum_{t=1}^{T} \mathbf{1}[\,p_{\text{vis},t} > \tau\,],
+
+    the share of frames on which vision engaged. A low :math:`v` where
+    obstacles were present indicates the CNN is not contributing, which is the
+    usual cause of vision policies underperforming the privileged baseline.
+
+    :returns: dict with ``reward`` :math:`G`, ``steps`` :math:`T`,
+        ``checkpoints`` reached, ``total_cp``, ``collided``, and ``vis_frac``
+        :math:`v`.
+    """
     obs, _ = env.reset()
     raw    = env.unwrapped
     done   = False
@@ -90,6 +122,14 @@ def run_episode(env, model, render: bool):
 
 
 def evaluate(ppo_path: str, cnn_path: str, scenarios, render: bool, episodes: int):
+    r"""Evaluate a vision policy across scenarios, reporting the vision-active rate.
+
+    Loads the CNN and PPO policy, then runs ``episodes`` rollouts per scenario
+    via :func:`run_episode`, aggregating mean return, completion, and the mean
+    vision-active fraction :math:`\bar v`. The vision env substitutes the CNN's
+    obstacle estimate for the privileged channels, so this measures how the
+    policy drives from *inferred* rather than ground-truth obstacle state.
+    """
     cnn = load_cnn(cnn_path)
     ppo_path = resolve_ppo(ppo_path)
     print(f"Loading PPO from {ppo_path}")

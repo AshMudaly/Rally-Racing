@@ -62,10 +62,14 @@ DEFAULTS = {
 
 
 def load_config(path: str = CONFIG_PATH) -> dict:
-    """Return DEFAULTS overlaid with whatever the GUI wrote (if anything).
+    r"""Return the effective config: ``DEFAULTS`` overlaid with the GUI's file.
 
-    Robust to a missing or malformed file: in either case the pure defaults
-    are returned so a stand-alone CLI run still works.
+    Resolution is a shallow merge with the saved file taking precedence,
+    :math:`\text{cfg} = \text{DEFAULTS} \oplus \text{user}` — except the nested
+    ``reward`` table, which is merged key-by-key so a partial reward override
+    keeps the untouched defaults. Robust to a missing or malformed file: either
+    case returns the pure defaults, so a stand-alone CLI run always works
+    without the GUI ever having been opened.
     """
     cfg = json.loads(json.dumps(DEFAULTS))  # deep copy
     if not os.path.exists(path):

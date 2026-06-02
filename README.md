@@ -34,42 +34,77 @@ The control panel (`src/control.py`) is a single Tkinter window — pure Python 
 
 ### First-time setup (one time)
 
-The GUI relies on a Python virtual environment with the project dependencies installed. You can either use your own venv or let the bundled setup script create one.
+The GUI runs each pipeline stage using a Python virtual environment that has the project dependencies installed. Setup is three one-time steps; afterwards you launch with a double-click (or one command).
 
-1. Open `launcher.conf` and set `VENV_PATH` to where your venv lives (or where you want it created):
+**Step 1 — make the launcher scripts executable.**
+From the project root:
 
-   ```
-   VENV_PATH=/home/you/Rally-Racing/venv
-   ```
+```bash
+cd /path/to/Rally-Racing
+chmod +x setup.sh launch.sh install_desktop.sh
+```
 
-2. Run the one-time setup (creates the venv if needed, installs requirements + the editable package, verifies the environment imports):
+**Step 2 — tell the launcher where your venv is.**
+Open `launcher.conf` and replace the placeholder with the absolute path to your venv (an existing one, or where you want `setup.sh` to create it):
 
-   ```bash
-   ./setup.sh
-   ```
+```
+VENV_PATH=/home/you/Rally-Racing/venv
+```
 
-3. (Optional) Register the double-click launcher so the GUI appears in your applications menu and on your Desktop:
+This is the one value the launcher cannot guess, so it must be set before anything else works. The project and the venv do **not** have to live in the same place — a venv elsewhere on disk is fine, as long as this path points at it.
 
-   ```bash
-   ./install_desktop.sh
-   ```
+**Step 3 — run setup, then register the launcher.**
+
+```bash
+./setup.sh
+./install_desktop.sh
+```
+
+`setup.sh` creates the venv if it is missing, installs `requirements.txt` and the editable `simple_driving` package into it, and verifies the gym environments import. If your venv already has everything, it simply confirms and exits. `install_desktop.sh` writes a ready-to-use launcher (with your real paths filled in) into your applications menu at `~/.local/share/applications/rally-racing.desktop` and copies it to your Desktop.
+
+> **Note on the `.desktop` files.** The `Rally-Racing.desktop` file in the project folder is a *template* — it keeps `/ABSOLUTE/PATH/TO/...` placeholders on purpose and is **not** the file you launch. Double-clicking the template opens a text editor, which is expected. The file you actually launch is the installed copy that `install_desktop.sh` writes into your applications menu.
 
 ### Launching the GUI
 
-- **Double-click** the *Rally-Racing Control Panel* icon (after `install_desktop.sh`), **or**
-- run the launcher from a terminal:
+After setup, launch in any of these ways:
+
+- **From the applications menu (recommended):** press the **Super** key, type "Rally", and open *Rally-Racing Control Panel*. The menu entry needs no extra permissions, so this is the most reliable method.
+- **From the Desktop icon:** double-click it. The first time, your desktop may ask you to trust it — right-click the icon and choose **Allow Launching** (GNOME), then double-click.
+- **From a terminal:**
 
   ```bash
   ./launch.sh
   ```
 
-  The launcher reads `launcher.conf`, checks the environment is ready (and offers to run setup if not), then starts the GUI using the venv's Python — so every training run it spawns uses the correct interpreter.
+  The launcher reads `launcher.conf`, checks the environment is ready (and offers to run `setup.sh` if not), then starts the GUI using the venv's Python — so every training run it spawns inherits the correct interpreter and packages.
 
-You can also start it directly with any Python that has the dependencies:
+You can also bypass the launcher entirely and start the GUI with any Python that already has the dependencies:
 
 ```bash
-python3 src/control.py
+/path/to/venv/bin/python3 src/control.py
 ```
+
+### Troubleshooting the launcher
+
+- **Double-clicking the project's `Rally-Racing.desktop` opens a text editor.** That's the template, not the installed launcher — launch from the applications menu (Super → "Rally") instead. See the note above.
+- **The installed launcher still has `/ABSOLUTE/PATH/TO` in it.** The path substitution didn't run. Either re-run `./install_desktop.sh`, or write the file directly:
+
+  ```bash
+  cat > ~/.local/share/applications/rally-racing.desktop << 'EOF'
+  [Desktop Entry]
+  Type=Application
+  Name=Rally-Racing Control Panel
+  Exec=/path/to/Rally-Racing/launch.sh
+  Path=/path/to/Rally-Racing
+  Terminal=false
+  Categories=Science;Education;Development;
+  EOF
+  chmod +x ~/.local/share/applications/rally-racing.desktop
+  update-desktop-database ~/.local/share/applications 2>/dev/null
+  ```
+
+- **`ModuleNotFoundError: No module named 'simple_driving'` (or `gymnasium`, `torch`).** The venv in `launcher.conf` doesn't have the dependencies. Run `./setup.sh`, or install manually into that venv with `/path/to/venv/bin/python3 -m pip install -r requirements.txt && /path/to/venv/bin/python3 -m pip install -e .`. The interpreter the GUI uses is whatever `launcher.conf` points at, so the packages must be installed *there*.
+- **`./launch.sh` works but the icon doesn't.** The app is fine; it's purely desktop registration — use the applications-menu launch, or the direct `cat >` fix above.
 
 ### Using the panel
 
@@ -92,6 +127,18 @@ The window is split into a settings area (left) and a run area (right).
 - **System Guide** — opens the full HTML system guide (`docs/system_guide.html`) in your default browser, including the function reference and an operation walkthrough.
 
 Settings are persisted to `gui_config.json`, which every training script reads at runtime. Save your settings before running, or use a *Run* button (which saves automatically first).
+
+### A first run, end to end
+
+A concrete walkthrough once the GUI is open:
+
+1. **Pick a scenario.** On the **Training** tab, set *Scenario* to `phase1` (the simplest — no obstacles or ramps). Leave the other defaults.
+2. **(Optional) Set a budget.** Lower *Total timesteps* (e.g. 50000) for a quick first run; the default 300000 is a full run.
+3. **Train.** On the **Run & Console** tab, click *Run* next to *Train (privileged)*. Output streams to the console. Switch to the **Training Metrics** tab to watch the episode-reward curve climb live.
+4. **Watch it drive.** When training finishes (a `best_model.zip` now exists under `gen2_models/phase1/privileged/best/`), go to the **Evaluation** tab, ensure *Show simulation* is ticked, then run *Test (privileged)*. A PyBullet window opens and the car drives the track.
+5. **Go further.** Repeat for `phase2` then `phase3` — each warm-starts from the previous automatically. To run the whole chain unattended, tick `phase1`/`phase2`/`phase3` training stages and use *Run selected in succession*.
+
+For a deeper explanation of any stage, reward term, or observation, click **System Guide** at the bottom of the window.
 
 ---
 

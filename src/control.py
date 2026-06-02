@@ -70,6 +70,14 @@ PY         = sys.executable  # use the same interpreter that launched the GUI
 # `renders` flags stages that can open a popout PyBullet window.
 
 class Stage:
+    r"""One runnable pipeline stage (a single CLI script the GUI can launch).
+
+    A stage binds a ``key`` and display ``label`` to a ``build`` callable that,
+    given the current settings dict, returns the ``(argv, cwd)`` for its
+    subprocess. ``renders`` marks stages that open a PyBullet window;
+    ``pipeline`` groups stages as State-RL vs Vision in the UI.
+    """
+
     def __init__(self, key, label, pipeline, build, renders=False, note=""):
         self.key      = key
         self.label    = label
@@ -158,6 +166,15 @@ STAGE_BY_KEY = {st.key: st for st in STAGES}
 #  GUI
 # ════════════════════════════════════════════════════════════════════════════
 class ControlApp:
+    r"""The Tkinter control panel: settings editor + pipeline runner.
+
+    Left pane edits all settings (training, reward weights, vision, evaluation)
+    and persists them to ``gui_config.json``, which the scripts read at
+    runtime. Right pane runs each :class:`Stage` as a subprocess — singly or
+    chained "in succession" — streaming output to a console, with a live
+    metrics tab and a button to open the HTML system guide.
+    """
+
     SCENARIOS = ["phase1", "phase2", "phase3"]
 
     def __init__(self, root):
@@ -450,7 +467,14 @@ class ControlApp:
             var.set(str(cfg["reward"].get(name, DEFAULTS["reward"][name])))
 
     def _collect_from_widgets(self):
-        """Read widgets into a config dict. Raises ValueError on bad numbers."""
+        r"""Serialise the widget state into a config dict for ``gui_config.json``.
+
+        Reads each field by its declared kind (int/float/bool/text/multi),
+        parsing numeric strings and splitting ``net_arch`` into a layer-size
+        list. Built on a deep copy of ``DEFAULTS`` so any unedited key keeps its
+        default. Raises :class:`ValueError` on an unparseable number, which the
+        caller surfaces as a dialog rather than writing a corrupt config.
+        """
         cfg = json.loads(json.dumps(DEFAULTS))  # deep copy as a base
         out = {}
         for name, (kind, var) in self._tk_vars.items():
@@ -538,6 +562,11 @@ class ControlApp:
 
     # ── running stages ────────────────────────────────────────────────────────
     def run_single(self, key):
+        r"""Save settings and run exactly one stage (its own *Run* button).
+
+        Refuses if a stage is already running. Queues just this stage with
+        succession disabled, so :meth:`_start_next` launches it and stops.
+        """
         if self.proc is not None:
             messagebox.showinfo("Busy", "A stage is already running.")
             return
@@ -548,6 +577,13 @@ class ControlApp:
         self._start_next()
 
     def run_succession(self):
+        r"""Save settings and run every ticked stage top-to-bottom.
+
+        Collects the selected stages into a queue with succession enabled;
+        :meth:`_stage_finished` then chains them, aborting the remainder if any
+        stage exits non-zero so a failed step never silently feeds a broken
+        artifact to the next.
+        """
         if self.proc is not None:
             messagebox.showinfo("Busy", "A stage is already running.")
             return
@@ -564,6 +600,14 @@ class ControlApp:
         self._start_next()
 
     def _start_next(self):
+        r"""Pop and launch the next queued stage as a subprocess.
+
+        Builds the stage's ``(argv, cwd)`` from current settings, launches it
+        in its own process group (so :meth:`stop_run` can kill the whole tree)
+        with ``src/`` and the project root on ``PYTHONPATH``, and spawns a
+        reader thread to pump output into the console. No-op when the queue is
+        empty.
+        """
         if not self.run_queue:
             self.status.set("Done.")
             self.queue_running = False

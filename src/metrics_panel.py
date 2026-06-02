@@ -41,6 +41,16 @@ SUBTEXT   = "#7d8590"
 
 
 class MetricsPanel(ttk.Frame):
+    r"""Live training-metrics panel embedded in the control GUI.
+
+    Reads the scalar time series Stable-Baselines3 writes to the local
+    TensorBoard event files (via :mod:`tb_reader`) and plots a selected metric
+    on a native Tk canvas — no ``matplotlib`` or ``tensorboard`` dependency. A
+    background timer re-reads the active run every few seconds so curves grow
+    in near-real-time during training; an *Open in W&B* button hands the
+    recorded run URL to the system browser for the full online dashboard.
+    """
+
     def __init__(self, parent, base_dir, generation="gen2",
                  wandb_project_getter=None):
         super().__init__(parent, padding=6)
@@ -157,6 +167,23 @@ class MetricsPanel(ttk.Frame):
         return TRACKED[idx][0], TRACKED[idx][1]
 
     def redraw(self):
+        r"""Redraw the selected metric's curve on the canvas.
+
+        Reads the active run's scalars, takes the selected series
+        :math:`\{(s_i, x_i)\}` (step, value), and maps data coordinates to
+        pixel coordinates by an affine fit to the padded plot rectangle:
+
+        .. math::
+
+            X(s) &= p_\ell + \frac{s - s_{\min}}{s_{\max}-s_{\min}}\,w \\
+            Y(x) &= p_t + \Bigl(1 - \frac{x - x_{\min}}{x_{\max}-x_{\min}}\Bigr) h
+
+        (the :math:`Y` axis is inverted because canvas :math:`y` grows
+        downward). The value range is padded by 8% so the curve never touches
+        the frame, and degenerate ranges (:math:`s_{\max}=s_{\min}`) are nudged
+        to avoid division by zero. Called on a timer while training runs, so
+        the plot grows live.
+        """
         c = self.canvas
         c.delete("all")
         run_dir = self.current_run_dir()
