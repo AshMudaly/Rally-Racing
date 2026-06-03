@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rally Racing — Reinforcement Learning Project</title>
+<style>
+    :root {
+        --bg: #ececec;
+        --ink: #2b2b2b;
+        --muted: #6a6a6a;
+        --rule: #c9c9c9;
+        --panel: #e3e3e3;
+        --accent: #355c7d;
+        --accent-soft: #cdd9e3;
+    }
+    * { box-sizing: border-box; }
+    body {
+        font-family: Georgia, "Times New Roman", serif;
+        background: var(--bg);
+        margin: 0;
+        padding: 0 0 80px 0;
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+    }
+    .container {
+        width: 72%;
+        max-width: 880px;
+        margin: auto;
+    }
+
+    /* ── Masthead ─────────────────────────────────────────── */
+    header.masthead {
+        text-align: center;
+        padding: 72px 0 28px 0;
+        border-bottom: 3px double var(--rule);
+        margin-bottom: 8px;
+    }
+    header.masthead h1 {
+        font-size: 44px;
+        font-weight: normal;
+        letter-spacing: 0.5px;
+        margin: 0 0 10px 0;
+    }
+    header.masthead .subtitle {
+        font-size: 17px;
+        color: var(--muted);
+        font-style: italic;
+        margin: 0;
+    }
+    header.masthead .meta {
+        margin-top: 18px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        letter-spacing: 1px;
+        color: var(--muted);
+        text-transform: uppercase;
+    }
+    header.masthead .meta span { margin: 0 10px; }
+
+    /* ── Section headings ─────────────────────────────────── */
+    h2 {
+        text-align: center;
+        font-weight: normal;
+        font-size: 26px;
+        margin-top: 52px;
+        margin-bottom: 6px;
+        position: relative;
+    }
+    h2::after {
+        content: "";
+        display: block;
+        width: 46px;
+        height: 2px;
+        background: var(--accent);
+        margin: 12px auto 0 auto;
+    }
+    h3 {
+        font-size: 18px;
+        font-weight: normal;
+        color: var(--accent);
+        margin-bottom: 4px;
+    }
+
+    p {
+        line-height: 1.7;
+        font-size: 16px;
+    }
+    .lead {
+        font-size: 18px;
+        line-height: 1.75;
+    }
+    a { color: var(--accent); }
+
+    /* ── Video ────────────────────────────────────────────── */
+    .video-caption { text-align: center; color: var(--muted); font-style: italic; }
+    .video-placeholder {
+        background: var(--panel);
+        border: 2px dashed #aaa;
+        aspect-ratio: 16 / 9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #888;
+        margin: 18px auto 10px auto;
+        font-style: italic;
+        letter-spacing: 1px;
+    }
+
+    /* ── Two-column ───────────────────────────────────────── */
+    .two-col {
+        display: flex;
+        gap: 40px;
+        margin-top: 26px;
+        flex-wrap: wrap;
+    }
+    .col { flex: 1; min-width: 280px; }
+
+    figure { margin: 0; }
+    img {
+        width: 100%;
+        border: 1px solid #ccc;
+        background: white;
+        display: block;
+    }
+    figcaption {
+        font-size: 13px;
+        color: var(--muted);
+        text-align: center;
+        margin-top: 8px;
+        font-style: italic;
+    }
+
+    /* ── Pipeline cards ───────────────────────────────────── */
+    .pipeline {
+        display: flex;
+        gap: 24px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    .stage {
+        flex: 1;
+        min-width: 240px;
+        background: #f4f4f4;
+        border: 1px solid var(--rule);
+        border-top: 3px solid var(--accent);
+        padding: 18px 20px;
+    }
+    .stage h3 { margin-top: 0; }
+    .stage p { font-size: 14px; line-height: 1.6; margin-bottom: 0; }
+    .arrow {
+        align-self: center;
+        font-size: 24px;
+        color: var(--accent);
+    }
+
+    /* ── Curriculum table ─────────────────────────────────── */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 22px;
+        font-size: 15px;
+    }
+    th, td {
+        text-align: left;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--rule);
+    }
+    th {
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+        border-bottom: 2px solid var(--accent);
+    }
+    td code {
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+        color: var(--accent);
+    }
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Stat strip ───────────────────────────────────────── */
+    .stats {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        flex-wrap: wrap;
+        margin-top: 28px;
+        padding: 24px 0;
+        border-top: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+    }
+    .stat { text-align: center; }
+    .stat .num {
+        font-size: 30px;
+        color: var(--accent);
+        display: block;
+    }
+    .stat .lbl {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--muted);
+    }
+
+    pre {
+        background: #e3e3e3;
+        padding: 18px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.5;
+        border-left: 3px solid var(--accent);
+    }
+    .tag-row { text-align: center; margin-top: 14px; }
+    .tag {
+        display: inline-block;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        letter-spacing: 0.5px;
+        padding: 4px 12px;
+        margin: 4px;
+        border-radius: 2px;
+    }
+    footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 64px;
+        padding-top: 24px;
+        border-top: 3px double var(--rule);
+    }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+    <div class="container">
+        <h1>Rally Racing</h1>
+        <p class="subtitle">A reinforcement-learning agent that learns to drive a rally circuit</p>
+        <div class="meta">
+            <span>PPO</span>·<span>PyBullet</span>·<span>Vision Transfer</span>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+
+<h2>Abstract</h2>
+<p class="lead">
+This project trains an autonomous rally-racing agent with deep reinforcement
+learning. A car learns to follow a sequence of checkpoints around a circuit
+while avoiding cones and handling ramps, using Proximal Policy Optimization
+(PPO) in a PyBullet physics simulation.
+</p>
+<p>
+The agent is developed in two stages. First a <em>privileged</em> policy learns
+to drive from ground-truth state, including the exact position of the nearest
+obstacle supplied by the simulator. That policy is then fine-tuned into a
+<em>vision</em> policy, where a convolutional network estimates obstacle
+position from the car's camera and feeds those predictions into the same
+controller. Training follows a difficulty curriculum, with each stage
+warm-starting from the policy learned on the previous one.
+</p>
+
+<h2>Video</h2>
+<p class="video-caption">Trained agent driving the circuit (to be added)</p>
+<div class="video-placeholder">Video Placeholder</div>
+
+<h2>How It Learns</h2>
+<p>
+Rather than learning to see and drive at once, the agent separates the two
+problems. The privileged policy masters control with perfect information; the
+vision stage then swaps ground-truth obstacle state for camera-derived
+estimates and adapts to that noisier signal — keeping the hard-won driving
+skill while learning to tolerate imperfect perception.
+</p>
+<div class="pipeline">
+    <div class="stage">
+        <h3>1 · Privileged PPO</h3>
+        <p>PPO trains on an 11-dimensional state vector: the next checkpoint and
+        nearest obstacle in the car's local frame, heading, speed, and chassis
+        angles. Ground-truth obstacle position makes this the strong baseline.</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stage">
+        <h3>2 · Obstacle CNN</h3>
+        <p>A convolutional network (<code>ObstacleCNN</code>) is trained on
+        camera frames to predict whether an obstacle is visible and where it is
+        in the car's local frame.</p>
+    </div>
+    <div class="arrow">→</div>
+    <div class="stage">
+        <h3>3 · Vision Fine-Tune</h3>
+        <p>The privileged policy is fine-tuned in an environment where the CNN's
+        prediction replaces the ground-truth obstacle channels, so the agent
+        drives from what it can actually see.</p>
+    </div>
+</div>
+
+<div class="two-col">
+    <div class="col">
+        <figure>
+            <img src="vision_proc.png">
+            <figcaption>Camera frame as seen by the obstacle-detection CNN.</figcaption>
+        </figure>
+    </div>
+    <div class="col">
+        <figure>
+            <img src="eval_rew.png">
+            <figcaption>Evaluation reward rising over PPO training.</figcaption>
+        </figure>
+    </div>
+</div>
+
+<h2>Reward Design</h2>
+<p>
+Behaviour is shaped by a reward function that sums several independent terms.
+Progress toward the active checkpoint is rewarded and regression penalised;
+reaching a checkpoint gives a bonus. Smoothness terms penalise yaw jerk and
+sudden roll/pitch changes to discourage erratic, unstable driving. Obstacles
+contribute both a hard collision penalty and a softer repulsive field that
+grows as the car nears any cone, so the agent keeps clear rather than merely
+avoiding contact. On ramp circuits, a small bonus rewards committed jumps.
+</p>
+
+<h2>Curriculum</h2>
+<p>
+The agent is trained on a sequence of circuits of increasing difficulty. Each
+circuit is a strict superset of the previous one — new elements are added, never
+removed — so a policy trained on an easier circuit is always a sensible starting
+point for the next. Privileged policies warm-start along this chain.
+</p>
+<table>
+    <thead>
+        <tr><th>Scenario</th><th>Cones</th><th>Ramps</th></tr>
+    </thead>
+    <tbody>
+        <tr><td><code>circuit_easy</code></td><td>—</td><td>—</td></tr>
+        <tr><td><code>circuit_medium</code></td><td>4 (SW cluster)</td><td>—</td></tr>
+        <tr><td><code>circuit_hard</code></td><td>4 (SW cluster)</td><td>all 4</td></tr>
+        <tr><td><code>circuit_difficult</code></td><td>all 8</td><td>all 4</td></tr>
+    </tbody>
+</table>
+
+<h2>Track Environment</h2>
+<p>
+The PyBullet environment provides a constrained racing circuit with a checkpoint
+sequence the car must follow in order. Depending on the scenario, the track adds
+cones to avoid and ramps to negotiate. Obstacle placement is fixed on the easier
+circuits and jittered per reset on the harder ones, so the agent must generalise
+rather than memorise a single layout.
+</p>
+<figure>
+    <img src="track_birdseye.png">
+    <figcaption>The rally circuit with checkpoints, cones, and ramps.</figcaption>
+</figure>
+
+<h2>Tooling</h2>
+<p>
+The project ships with a desktop control panel that runs the whole pipeline —
+training, vision fine-tuning, and evaluation — without touching the command
+line. It exposes every training and reward setting, streams live console output,
+and plots training metrics in real time by reading the local TensorBoard logs.
+A one-click launcher and an offline HTML system guide round out the workflow.
+</p>
+<div class="stats">
+    <div class="stat"><span class="num">2</span><span class="lbl">Observation pipelines</span></div>
+    <div class="stat"><span class="num">4</span><span class="lbl">Curriculum stages</span></div>
+    <div class="stat"><span class="num">11</span><span class="lbl">State dimensions</span></div>
+    <div class="stat"><span class="num">PPO</span><span class="lbl">RL algorithm</span></div>
+</div>
+
+<h2>Results &amp; Reflection</h2>
+<p>
+Training showed steady improvement in driving competence as PPO refined its
+policy, with evaluation reward climbing across the curriculum. The privileged
+policy reaches reliable lap completion on the simpler circuits; the hardest
+circuit, with the full set of cones and ramps, remains the most failure-prone,
+where reward variance is highest.
+</p>
+<p>
+Vision policies perform somewhat below their privileged counterparts, as
+expected — the CNN-derived obstacle estimate is noisier than ground truth — but
+demonstrate that a controller trained on perfect state can transfer to
+camera-based perception. Reward shaping and the warm-start curriculum were the
+two most important contributors to stable, convergent behaviour.
+</p>
+<p>
+Future work may include richer state representations, additional sensing,
+alternative RL algorithms, and more complex tracks.
+</p>
+
+<h2>Technical Stack</h2>
+<div class="tag-row">
+    <span class="tag">Python</span>
+    <span class="tag">PPO (Stable-Baselines3)</span>
+    <span class="tag">PyBullet</span>
+    <span class="tag">PyTorch</span>
+    <span class="tag">CNN obstacle detection</span>
+    <span class="tag">Gymnasium</span>
+    <span class="tag">TensorBoard</span>
+    <span class="tag">Tkinter GUI</span>
+</div>
+
+<h2>Project Structure</h2>
+<pre>
+Rally-Racing/
+├── simple_driving/                 # gym environments + assets
+│   ├── envs/
+│   │   ├── rally_driving_env.py    # privileged obs (ground-truth obstacle position)
+│   │   └── vision_rally_env.py     # vision obs (CNN-replaced obstacle channels)
+│   └── resources/                  # URDF files, meshes
+├── src/
+│   ├── control.py                  # GUI control panel (entry point for GUI operation)
+│   ├── config.py                   # shared config layer (defaults + gui_config.json)
+│   ├── tb_reader.py                # dependency-free TensorBoard log reader (GUI metrics)
+│   ├── metrics_panel.py            # in-GUI live metrics plotting + Open in W&amp;B
+│   ├── train.py                    # train PPO with privileged observation
+│   ├── train_vision.py             # fine-tune PPO with vision observation
+│   ├── test.py                     # evaluate / watch a privileged model
+│   ├── test_vision.py              # evaluate / watch a vision model
+│   └── reward.py                   # reward function
+├── vision/
+│   ├── model.py                    # ObstacleCNN architecture
+│   ├── cnn_obstacle.pt             # trained CNN weights
+│   └── train_cnn.py                # CNN training script
+├── docs/
+│   ├── system_guide.tex            # editable source for the system guide
+│   ├── system_guide.html           # pre-built guide opened by the GUI button
+│   └── system_guide.css            # guide stylesheet
+├── gen6_models/                    # trained policies (privileged + vision)
+├── launcher.conf                   # venv path for the launcher (edit this)
+├── setup.sh                        # one-time environment setup
+├── launch.sh                       # everyday GUI launcher
+├── install_desktop.sh              # registers the double-click launcher
+└── Rally-Racing.desktop            # Linux application launcher
+</pre>
+
+</div>
+
+<footer>
+    <div class="container">
+        Rally Racing · Reinforcement Learning for Autonomous Driving
+    </div>
+</footer>
+
+</body>
+</html>

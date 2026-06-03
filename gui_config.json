@@ -38,9 +38,9 @@
   "cnn_lr": 0.001,
   "vision_timesteps": 100000,
   "test_scenarios": [
-    "circuit_easy"
+    "circuit_medium"
   ],
-  "test_episodes": 1,
+  "test_episodes": 6,
   "render": true,
   "test_model": "/home/alec/Git/Rally-Racing/gen3_models/custom_easy/privileged/ppo_rally_final.zip"
 }

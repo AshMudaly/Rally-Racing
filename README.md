@@ -32,7 +32,21 @@ The `-e .` installs `simple_driving` as an editable package, so the registered g
 
 The control panel (`src/control.py`) is a single Tkinter window — pure Python standard library, no extra GUI dependencies. It lets any user who has completed installation operate the whole project without editing source.
 
-### First-time setup (one time)
+### Single use operation (control.py)
+
+For single time users, it is recomended to operate the GUI control panel directly through python. this can be accomplished after installation. To use this as such, either run the ```bash control.py``` script through VSC or depending on virtual environment use;
+
+```bash
+/path/to/venv/bin/python3 src/control.py
+```
+Or
+
+```bash
+python3 src/control.py
+```
+From the Ralley-Racing Root driectory.
+
+### First-time app setup (.desktop installation)
 
 The GUI runs each pipeline stage using a Python virtual environment that has the project dependencies installed. Setup is three one-time steps; afterwards you launch with a double-click (or one command).
 
@@ -78,11 +92,6 @@ After setup, launch in any of these ways:
 
   The launcher reads `launcher.conf`, checks the environment is ready (and offers to run `setup.sh` if not), then starts the GUI using the venv's Python — so every training run it spawns inherits the correct interpreter and packages.
 
-You can also bypass the launcher entirely and start the GUI with any Python that already has the dependencies:
-
-```bash
-/path/to/venv/bin/python3 src/control.py
-```
 
 ### Troubleshooting the launcher
 
