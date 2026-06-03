@@ -4,17 +4,17 @@ __pycache__/
 *.egg-info/
 .Python
 
-# Trained models — only gen2_models is committed (selectively, see below)
+# Trained models — gen1–gen3 are deprecated (exploit-contaminated or
+# pre-curriculum). gen4+ is committed in full since the warm-start chain
+# is now self-contained (custom_easy → custom_medium → custom).
 models/
 gen1_models/
 gen1_logs/
-
-# Inside gen2_models, commit only the best/best_model.zip files.
-# Final snapshots and any other intermediates are ignored.
-gen2_models/**/ppo_*_final.zip
-gen2_models/**/resume.zip
-gen2_models/**/*.broken
-gen2_models/**/*.tmp
+gen2_models/
+gen2_logs/
+gen3_models/
+gen3_logs/
+gen4_models/**/ppo_rally_final.zip
 
 # Logs and wandb
 logs/
@@ -27,4 +27,4 @@ src/wandb/
 .vscode/
 .idea/
 .DS_Store
-*.swp
+*.swpgen4_models/**/ppo_rally_final.zip

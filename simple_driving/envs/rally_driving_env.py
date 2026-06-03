@@ -29,7 +29,10 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         - phase1: bare track, just checkpoints
         - phase2: checkpoints + static cone obstacles to avoid
         - phase3: checkpoints + cones + ramps (jumps) for shortcuts
-        - custom: counter-clockwise oval, cone slalom + ramp/gap jumps
+        - custom_easy / custom_medium / custom_hard (counter-clockwise oval):
+              custom_easy:   oval only — learn lap shape + checkpoints
+              custom_medium: oval + ramps — add jump handling
+              custom_hard:        oval + ramps + cones — full track
     """
 
     # ── Observation bounds ─────────────────────────────────────────────
@@ -57,7 +60,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         ( 16,  16),
         ( 16,   2),
         (  5,   4),
-        ( -3,  12),
+        (-12,  -2),
         (-16,  -1),
         (-16, -16),
     ]
@@ -71,7 +74,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         (10, 9,  math.radians(-30)),
         (-8, 5,  math.radians(120)),
     ]
-    
+
     # ── Custom track (counter-clockwise oval, ~24m x 16m) ──────────────
     CUSTOM_CHECKPOINTS = [
         (  0, -14),   # CP1  start/finish, bottom center
@@ -84,15 +87,20 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         ( -6, -14),   # CP8  past ramps, closes the lap
     ]
     CUSTOM_OBSTACLE_HOMES = [
-        (-10, -10),   # slalom cones, lower-left, staggered
-        (-13,  -7),
-        (-11,  -4),
-        (-15,  -1),
+        (-15, -9),
+        (-10, -11),
+        (-12, -6),
+        (-14, -5),
+        (  9,  8),
+        ( 11, 11),
+        ( -7,  5),
+        ( -4, 10),
     ]
     CUSTOM_RAMP_POSITIONS = [
-        (10, -14, math.radians(180)),  # ramp jump on bottom straight
-        (-2, -14, math.radians(180)),  # gap: up-ramp
-        (-5, -14, math.radians(0)),    # gap: down-ramp (facing back)
+        (10, -14, math.radians(180)),
+        (-2, -14, math.radians(180)),
+        (-5, -14, math.radians(0)),
+        (15,  2, math.radians(270)),
     ]
 
     # ── Tunables ───────────────────────────────────────────────────────
@@ -100,6 +108,11 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     OBSTACLE_DRIFT_MAX        = 0.05
     OBSTACLE_DRIFT_RADIUS     = 2.0
     OBSTACLE_COLLISION_RADIUS = 0.7
+
+    # ── Ramp-taken detection ──────────────────────────────────────────
+    RAMP_TAKEN_RADIUS  = 1.5     # car must be within this many metres of ramp centre
+    RAMP_PITCH_THRESH  = 0.15    # car pitch must exceed this (≈9°) to count as airborne
+    FLIP_THRESHOLD     = 2.5     # radians; ~143° — beyond any legitimate ramp pitch
 
     def __init__(self, isDiscrete=False, renders=False,
                  reward_callback=None, observation_callback=None,
@@ -148,6 +161,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.obstacle_positions = []
         self.obstacle_homes     = []
         self.ramp_objects       = []
+        self.ramps_taken        = set()
 
         self.has_obstacle  = False
         self.obstacle_pos  = None
@@ -168,8 +182,8 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         # Custom track spawns the car in the S/F zone (between CP1 and CP8)
         # facing -x, rather than at the URDF default origin. Other scenarios
         # keep the origin spawn unchanged.
-        if self.scenario == "custom":
-            spawn_yaw = math.pi  # face -x (toward CP1)
+        if self.scenario in ("custom_hard", "custom_easy", "custom_medium"):
+            spawn_yaw = math.pi
             orn = self._p.getQuaternionFromEuler([0.0, 0.0, spawn_yaw])
             self._p.resetBasePositionAndOrientation(
                 self.car.car, [6.0, -14.0, 0.1], orn,
@@ -183,21 +197,30 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         self.obstacle_positions = []
         self.obstacle_homes     = []
         self.ramp_objects       = []
+        self.ramps_taken        = set()
         self.has_obstacle       = False
         self.obstacle_pos       = None
 
-        if self.scenario == "custom":
+        if self.scenario == "custom_hard":
             self._obstacle_source   = self.CUSTOM_OBSTACLE_HOMES
             self._ramp_source       = self.CUSTOM_RAMP_POSITIONS
+            self._checkpoint_source = self.CUSTOM_CHECKPOINTS
+        elif self.scenario == "custom_medium":
+            self._obstacle_source   = []
+            self._ramp_source       = self.CUSTOM_RAMP_POSITIONS
+            self._checkpoint_source = self.CUSTOM_CHECKPOINTS
+        elif self.scenario == "custom_easy":
+            self._obstacle_source   = []
+            self._ramp_source       = []
             self._checkpoint_source = self.CUSTOM_CHECKPOINTS
         else:
             self._obstacle_source   = self.OBSTACLE_HOMES
             self._ramp_source       = self.RAMP_POSITIONS
             self._checkpoint_source = self.CHECKPOINTS
 
-        if self.scenario in ("phase2", "phase3", "custom"):
+        if self.scenario in ("phase2", "phase3", "custom_hard"):
             self._spawn_obstacles()
-        if self.scenario in ("phase3", "custom"):
+        if self.scenario in ("phase3", "custom_medium", "custom_hard"):
             self._spawn_ramps()
 
         checkpoints = options.get("checkpoints", None) if options else None
@@ -270,10 +293,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
                 if nearest_dist < self.OBSTACLE_COLLISION_RADIUS:
                     collision = True
                     break
-
-        # FIX: wiggle once per step(), not once per substep.
-        # Previously inside the loop above — caused ~50 nudges per step,
-        # making obstacles vibrate visibly instead of drifting slowly.
+                
         if self.obstacle_objects:
             self._wiggle_obstacles()
 
@@ -288,6 +308,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         car_pos, car_orn = self._p.getBasePositionAndOrientation(self.car.car)
         pitch, roll, yaw = self._p.getEulerFromQuaternion(car_orn)
         current_goal     = self.checkpoints[self.current_checkpoint_idx]
+
+        # Ramp-taken detection (fires once per ramp per episode).
+        ramp_taken_idx = self._check_ramp_taken(car_pos, pitch)
 
         dist_to_goal = math.hypot(
             car_pos[0] - current_goal[0],
@@ -328,6 +351,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             prev_pitch=self.prev_pitch,     current_pitch=pitch,
             obstacle_positions=self.obstacle_positions,
             scenario=self.scenario,
+            ramp_taken=ramp_taken_idx is not None,
         )
 
         self.prev_yaw_delta = _wrap_delta(yaw - self.prev_yaw)
@@ -359,6 +383,19 @@ class RallyDrivingEnv(SimpleDrivingEnv):
             if d < best[1]:
                 best = (pos, d)
         return best
+
+    # ── Ramp-taken detection ──────────────────────────────────────────
+
+    def _check_ramp_taken(self, car_pos, pitch):
+        if abs(pitch) < self.RAMP_PITCH_THRESH:
+            return None
+        for i, (rx, ry, _) in enumerate(self._ramp_source):
+            if i in self.ramps_taken:
+                continue
+            if math.hypot(car_pos[0] - rx, car_pos[1] - ry) < self.RAMP_TAKEN_RADIUS:
+                self.ramps_taken.add(i)
+                return i
+        return None
 
     # ── Camera ─────────────────────────────────────────────────────────
 
@@ -454,7 +491,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     # ── Termination ────────────────────────────────────────────────────
 
     def _termination(self):
-        car_pos, _ = self._p.getBasePositionAndOrientation(self.car.car)
+        car_pos, car_orn = self._p.getBasePositionAndOrientation(self.car.car)
+        pitch, roll, _ = self._p.getEulerFromQuaternion(car_orn)
         lap_complete  = self.current_checkpoint_idx >= len(self.checkpoints)
         out_of_bounds = abs(car_pos[0]) > 50 or abs(car_pos[1]) > 30
-        return self._envStepCounter > 500 or lap_complete or out_of_bounds
+        flipped       = abs(pitch) > self.FLIP_THRESHOLD or abs(roll) > self.FLIP_THRESHOLD
+        return self._envStepCounter > 500 or lap_complete or out_of_bounds or flipped
