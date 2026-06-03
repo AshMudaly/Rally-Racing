@@ -24,6 +24,12 @@ try:
 except Exception:
     _REWARD_OVERRIDES = {}
 
+# Scenarios that have ramps — airborne bonus only fires in these.
+SCENARIOS_WITH_RAMPS = ("circuit_medium",
+                        "circuit_hard",
+                        "circuit_difficult")
+
+
 class RewardConfig:
     """All tunable weights and thresholds in one place."""
 
@@ -36,9 +42,8 @@ class RewardConfig:
     # ── Per-step shaping ───────────────────────────────────────────────
     STEP_PENALTY        =  -2.0
     PROGRESS_SCALE      =   5.0    # multiplier on (prev_dist - dist)
-    # FIX: regression penalty now fires unconditionally on backward movement,
-    # not only when near an obstacle. Previously the guard meant phase1 had
-    # zero regression penalty, letting the agent zigzag freely.
+    # FIX: regression penalty fires unconditionally on backward movement,
+    # not only when near an obstacle. Without this the agent can zigzag freely.
     REGRESSION_PENALTY  = -10.0
 
     # ── Smooth driving ─────────────────────────────────────────────────
@@ -54,7 +59,7 @@ class RewardConfig:
     REPULSE_RADIUS        = 1.5    # range of repulsive field
     REPULSE_SCALE         = 5.0   # strength of repulsive field
 
-    # ── Jump bonus (phase 3) ───────────────────────────────────────────
+    # ── Jump bonus (scenarios with ramps) ──────────────────────────────
     # Positive value => agent is rewarded for getting airborne briefly.
     # Set to 0.0 or negative to discourage jumping. Triggered by pitch
     # magnitude exceeding the threshold (i.e. the car launched off a ramp).
@@ -83,7 +88,7 @@ class RewardCalculator:
         prev_yaw_delta=0.0,
         prev_roll=0.0, current_roll=0.0,
         prev_pitch=0.0, current_pitch=0.0,
-        obstacle_positions=None, scenario="phase1",
+        obstacle_positions=None, scenario="circuit_easy",
         ramp_taken=False,
     ) -> float:
         cfg = self.cfg
@@ -132,7 +137,7 @@ class RewardCalculator:
             reward += cfg.OUT_OF_BOUNDS
 
         # ── Airborne bonus (any scenario with ramps) ────────────────────
-        if (scenario in ("phase3", "custom_medium", "custom")
+        if (scenario in SCENARIOS_WITH_RAMPS
                 and current_pitch > cfg.AIRBORNE_PITCH_THRESHOLD
                 and progress > 0):
             reward += cfg.AIRBORNE_BONUS

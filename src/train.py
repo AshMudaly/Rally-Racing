@@ -2,10 +2,9 @@
 PPO training script for RallyDrivingEnv (privileged observation).
 
 Usage:
-    python3 src/train.py --scenario phase1
-    python3 src/train.py --scenario phase2 --timesteps 300000
-    python3 src/train.py --scenario phase3 --no-wandb
-    python3 src/train.py --scenario phase2 --fresh    # ignore warm-start, train from scratch
+    python3 src/train.py --scenario circuit_easy
+    python3 src/train.py --scenario circuit_difficult --no-wandb
+    python3 src/train.py --scenario circuit_medium --fresh    # ignore warm-start, train from scratch
 
 Output layout:
     <GENERATION>_models/<scenario>/privileged/best/best_model.zip
@@ -13,10 +12,10 @@ Output layout:
     logs/<GENERATION>_<scenario>_privileged/
 
 Warm-start chain (privileged):
-    phase1 -> scratch
-    phase2 -> phase1
-    phase3 -> phase2
-    custom -> phase3
+    circuit_easy      -> scratch
+    circuit_medium    -> circuit_easy
+    circuit_hard      -> circuit_medium
+    circuit_difficult -> circuit_hard
 """
 
 import argparse
@@ -47,8 +46,11 @@ from wandb.integration.sb3 import WandbCallback
 
 # ── Constants ─────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-GENERATION    = "gen4"          # bump when starting a new generation
+GENERATION    = "gen5"          # bump when starting a new generation
 WANDB_PROJECT = "rally-racing"
+
+SCENARIOS = ["circuit_easy", "circuit_medium",
+             "circuit_hard", "circuit_difficult"]
 
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
@@ -60,19 +62,15 @@ PPO_KWARGS = dict(
 
 
 WARM_START_CHAIN = {
-    "phase2":        "phase1",
-    "phase3":        "phase2",
-    "custom_easy":   "phase3",
-    "custom_medium": "custom_easy",
-    "custom_hard":   "custom_medium",
+    "circuit_medium":    "circuit_easy",
+    "circuit_hard":      "circuit_medium",
+    "circuit_difficult": "circuit_hard",
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--scenario", required=True,
-                    choices=["phase1", "phase2", "phase3",
-                             "custom_easy", "custom_medium", "custom_hard"])
+    parser.add_argument("--scenario", required=True, choices=SCENARIOS)
     parser.add_argument("--timesteps", type=int, default=300_000)
     parser.add_argument("--n-envs", type=int, default=8)
     parser.add_argument("--no-wandb", action="store_true")

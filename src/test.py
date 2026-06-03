@@ -2,10 +2,10 @@
 Evaluation script for the trained Rally agent.
 
 Usage:
-    python3 test.py                    # default: best model, all phases
-    python3 test.py --model models/resume.zip
-    python3 test.py --scenarios phase1 phase2 phase3
-    python3 test.py --no-render
+    python3 test.py                                          # all circuits, each vs its own best model
+    python3 test.py --scenarios circuit_easy circuit_medium
+    python3 test.py --model gen5_models/circuit_difficult/privileged/best/best_model.zip
+    python3 test.py --no-render --episodes 20
 """
 
 import argparse
@@ -25,35 +25,62 @@ from stable_baselines3 import PPO
 
 from reward import custom_reward
 
-BASE_DIR       = os.path.abspath(os.path.join(HERE, ".."))
-DEFAULT_MODEL  = os.path.join(BASE_DIR, "models", "best", "best_model.zip")
+BASE_DIR    = os.path.abspath(os.path.join(HERE, ".."))
+GENERATION  = "gen5"
+SCENARIOS   = ["circuit_easy", "circuit_medium",
+               "circuit_hard", "circuit_difficult"]
 
-def evaluate(model_path: str, scenarios: list[str], render: bool = True, episodes: int = 1):
-    r"""Evaluate a saved privileged policy across one or more scenarios.
 
-    Loads the PPO model and, for each scenario, runs ``episodes`` deterministic
-    rollouts (greedy actions, :math:`a_t = \arg\max_a \pi(a \mid s_t)`),
-    reporting per-episode return :math:`G = \sum_t r_t`, step count, and
-    checkpoint completion. With ``render=True`` a PyBullet window is opened so
-    the car can be watched; ``render=False`` runs headless for fast batch
-    scoring.
+def default_model_for(scenario: str) -> str:
+    """Path to the best model trained on a given scenario, under the current
+    generation's directory layout (mirrors train.py)."""
+    return os.path.join(BASE_DIR, f"{GENERATION}_models", scenario,
+                        "privileged", "best", "best_model.zip")
 
-    Note that on ``phase1`` (fixed spawn, no obstacles) a deterministic policy
-    yields identical episodes, so repeated returns there are expected, not a
-    bug.
 
-    :param model_path: path to a saved PPO ``.zip`` (typically ``best_model.zip``).
+def evaluate(model_override: str | None, scenarios: list[str],
+             render: bool = True, episodes: int = 1):
+    r"""Evaluate saved privileged policies across one or more scenarios.
+
+    For each scenario, runs ``episodes`` deterministic rollouts (greedy
+    actions, :math:`a_t = \arg\max_a \pi(a \mid s_t)`), reporting per-episode
+    return :math:`G = \sum_t r_t`, step count, and checkpoint completion.
+    With ``render=True`` a PyBullet window is opened so the car can be
+    watched; ``render=False`` runs headless for fast batch scoring.
+
+    Model selection:
+        - If ``model_override`` is given, that single model is used for every
+          scenario (useful for cross-scenario evaluation, e.g. running the
+          ``circuit_difficult`` policy on ``circuit_easy`` to check regression).
+        - Otherwise each scenario loads ``default_model_for(scenario)``.
+
+    Note on determinism: ``circuit_easy`` and ``circuit_medium`` have no
+    obstacles, so with ``deterministic=True`` repeated episodes produce
+    identical rollouts. ``circuit_hard`` and ``circuit_difficult`` apply
+    per-reset obstacle spawn jitter, so episodes differ across resets even
+    with a deterministic policy — this is expected.
+
+    :param model_override: optional explicit path to a saved PPO ``.zip``.
     :param scenarios: scenario names to evaluate, in order.
     :param render: open the simulator window if ``True``.
     :param episodes: rollouts per scenario.
     """
-    if not os.path.exists(model_path):
-        sys.exit(f"No model found at {model_path}")
+    # Cache loaded models so we don't reload between scenarios when the
+    # same model is shared (which is the case when --model is set).
+    model_cache: dict[str, PPO] = {}
 
-    print(f"Loading model from {model_path}")
-    model = PPO.load(model_path)
+    def load(path: str) -> PPO:
+        if path not in model_cache:
+            if not os.path.exists(path):
+                sys.exit(f"No model found at {path}")
+            print(f"Loading model from {path}")
+            model_cache[path] = PPO.load(path)
+        return model_cache[path]
 
     for i, scenario in enumerate(scenarios):
+        model_path = model_override or default_model_for(scenario)
+        model = load(model_path)
+
         print(f"\n--- Scenario {i + 1}/{len(scenarios)}: {scenario.upper()} ({episodes} eps) ---")
         env = gym.make(
             "RallyDriving-v0",
@@ -98,16 +125,19 @@ def evaluate(model_path: str, scenarios: list[str], render: bool = True, episode
         print(f"     checkpoints: mean={np.mean(completions):.2f}/{total}  "
               f"avg_steps={np.mean(step_counts):.1f}")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate trained Rally PPO model.")
     parser.add_argument(
-        "--model", default=DEFAULT_MODEL,
-        help=f"Path to model .zip (default: {DEFAULT_MODEL})",
+        "--model", default=None,
+        help="Explicit model .zip path (overrides per-scenario lookup). "
+             "If omitted, each scenario loads "
+             f"{GENERATION}_models/<scenario>/privileged/best/best_model.zip",
     )
     parser.add_argument(
         "--scenarios", nargs="+",
-        default=["phase1", "phase2", "phase3"],
-        help="Scenarios to evaluate: phase1, phase2, phase3",
+        default=SCENARIOS, choices=SCENARIOS,
+        help=f"Scenarios to evaluate (default: all). Choices: {', '.join(SCENARIOS)}",
     )
     parser.add_argument(
         "--no-render", action="store_true",
@@ -119,7 +149,9 @@ def main():
     )
     args = parser.parse_args()
 
-    evaluate(args.model, args.scenarios, render=not args.no_render, episodes=args.episodes)
-    
+    evaluate(args.model, args.scenarios,
+             render=not args.no_render, episodes=args.episodes)
+
+
 if __name__ == "__main__":
     main()
