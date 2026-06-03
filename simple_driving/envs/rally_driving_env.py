@@ -27,9 +27,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
 
     Circuit curriculum (counter-clockwise oval, ~24m x 16m):
         - circuit_easy:      checkpoints only
-        - circuit_medium:    checkpoints + ramps
-        - circuit_hard:      checkpoints + ramps + 4 SW-cluster cones
-        - circuit_difficult: checkpoints + ramps + all 8 cones
+        - circuit_medium:    checkpoints + 4 SW-cluster cones
+        - circuit_hard:      checkpoints + 4 SW-cluster cones + ramps
+        - circuit_difficult: checkpoints + all 8 cones + ramps
 
     Obstacles spawn with per-reset jitter (uniform disc of radius
     OBSTACLE_SPAWN_JITTER around their nominal home) so the policy cannot
@@ -98,9 +98,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     FLIP_THRESHOLD     = 2.5     # radians; ~143° — beyond any legitimate ramp pitch
 
     # ── Scenario membership sets (single source of truth) ──────────────
-    _SCENARIOS_WITH_OBSTACLES = ("circuit_hard", "circuit_difficult")
-    _SCENARIOS_WITH_RAMPS     = ("circuit_medium", "circuit_hard",
+    _SCENARIOS_WITH_OBSTACLES = ("circuit_medium", "circuit_hard",
                                  "circuit_difficult")
+    _SCENARIOS_WITH_RAMPS     = ("circuit_hard", "circuit_difficult")
 
     def __init__(self, isDiscrete=False, renders=False,
                  reward_callback=None, observation_callback=None,
@@ -221,7 +221,9 @@ class RallyDrivingEnv(SimpleDrivingEnv):
         if scenario == "circuit_easy":
             return [], [], self.CIRCUIT_CHECKPOINTS
         if scenario == "circuit_medium":
-            return [], self.CIRCUIT_RAMP_POSITIONS, self.CIRCUIT_CHECKPOINTS
+            return (self.CIRCUIT_OBSTACLE_HOMES[:self.CIRCUIT_HARD_OBSTACLE_COUNT],
+                    [],
+                    self.CIRCUIT_CHECKPOINTS)
         if scenario == "circuit_hard":
             return (self.CIRCUIT_OBSTACLE_HOMES[:self.CIRCUIT_HARD_OBSTACLE_COUNT],
                     self.CIRCUIT_RAMP_POSITIONS,

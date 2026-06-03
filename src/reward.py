@@ -25,8 +25,7 @@ except Exception:
     _REWARD_OVERRIDES = {}
 
 # Scenarios that have ramps — airborne bonus only fires in these.
-SCENARIOS_WITH_RAMPS = ("circuit_medium",
-                        "circuit_hard",
+SCENARIOS_WITH_RAMPS = ("circuit_hard",
                         "circuit_difficult")
 
 

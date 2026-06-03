@@ -5,9 +5,9 @@ __pycache__/
 .Python
 
 # Trained models — ignore all model artifacts except the single best model.
-gen5_models/**
-!gen5_models/
-!gen5_models/**/best_model.zip
+gen6_models/**
+!gen6_models/
+!gen6_models/**/best_model.zip
 *.zip
 *.pt
 *.pth

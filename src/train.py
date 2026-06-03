@@ -46,7 +46,7 @@ from wandb.integration.sb3 import WandbCallback
 
 # ── Constants ─────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-GENERATION    = "gen5"          # bump when starting a new generation
+GENERATION    = "gen6"          # bump when starting a new generation
 WANDB_PROJECT = "rally-racing"
 
 SCENARIOS = ["circuit_easy", "circuit_medium",
@@ -55,7 +55,7 @@ SCENARIOS = ["circuit_easy", "circuit_medium",
 PPO_KWARGS = dict(
     learning_rate = 3e-4,
     batch_size    = 256,
-    ent_coef      = 0.02,
+    ent_coef      = 0.05,
     device        = "cpu",
     policy_kwargs = dict(net_arch=[256, 256]),
 )
@@ -71,7 +71,7 @@ WARM_START_CHAIN = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True, choices=SCENARIOS)
-    parser.add_argument("--timesteps", type=int, default=300_000)
+    parser.add_argument("--timesteps", type=int, default=800_000)
     parser.add_argument("--n-envs", type=int, default=8)
     parser.add_argument("--no-wandb", action="store_true")
     parser.add_argument("--fresh", action="store_true",
