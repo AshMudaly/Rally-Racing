@@ -69,6 +69,346 @@ PY         = sys.executable  # use the same interpreter that launched the GUI
 # `build` receives the live settings dict and returns (argv_list, cwd).
 # `renders` flags stages that can open a popout PyBullet window.
 
+
+# ════════════════════════════════════════════════════════════════════════════
+#  Embedded metrics reading + live plot panel
+#  (folded in from the former metrics_reader.py / metrics_panel.py; tb_reader.py
+#   is kept as a standalone dependency-free fallback parser.)
+# ════════════════════════════════════════════════════════════════════════════
+import tb_reader  # dependency-free fallback parser
+
+# Prefer the authoritative TensorBoard reader when available (it is a transitive
+# dependency of torch's SummaryWriter, so present on any training machine).
+try:
+    from tensorboard.backend.event_processing.event_accumulator import (
+        EventAccumulator as _EventAccumulator,
+    )
+    _HAVE_TB = True
+except Exception:
+    _HAVE_TB = False
+
+
+def _mr_backend_name():
+    return "tensorboard" if _HAVE_TB else "builtin"
+
+
+def _mr_latest_event_file(run_dir):
+    """Most-recently-modified tfevents file at or below run_dir (recursive)."""
+    return tb_reader.latest_event_file(run_dir)
+
+
+def _mr_read_run(run_dir):
+    """{tag: [(step, wall_time, value), ...]} — EventAccumulator first, builtin
+    fallback. Both verified to return identical values on real SB3 logs."""
+    if _HAVE_TB:
+        try:
+            ev = tb_reader.latest_event_file(run_dir)
+            if ev:
+                acc = _EventAccumulator(ev, size_guidance={"scalars": 0})
+                acc.Reload()
+                series = {}
+                for tag in acc.Tags().get("scalars", []):
+                    series[tag] = [(p.step, p.wall_time, p.value)
+                                   for p in acc.Scalars(tag)]
+                if series:
+                    return series
+        except Exception:
+            pass
+    return tb_reader.read_run(run_dir)
+
+
+TRACKED = [
+    # Tags verified against real SB3 output. Episode stats live under eval/*
+    # (logged by EvalCallback); rollout/* may be absent depending on setup, so
+    # any tag the run does not contain is simply skipped at draw time.
+    ("eval/mean_reward",     "Eval reward (mean)"),
+    ("eval/mean_ep_length",  "Eval episode length (mean)"),
+    ("rollout/ep_rew_mean",  "Rollout reward (mean)"),
+    ("rollout/ep_len_mean",  "Rollout episode length (mean)"),
+    ("train/loss",           "Total loss"),
+    ("train/value_loss",     "Value loss"),
+    ("train/policy_gradient_loss", "Policy-gradient loss"),
+    ("train/entropy_loss",   "Entropy loss"),
+    ("train/explained_variance", "Explained variance"),
+    ("train/approx_kl",      "Approx. KL"),
+    ("time/fps",             "Throughput (FPS)"),
+]
+
+# Palette (kept readable on the dark console theme used by the GUI).
+PLOT_BG   = "#0d1117"
+GRID      = "#21262d"
+AXIS      = "#5a6270"
+LINE      = "#4aa3ff"
+TEXT      = "#c9d1d9"
+SUBTEXT   = "#7d8590"
+
+
+class MetricsPanel(ttk.Frame):
+    r"""Live training-metrics panel embedded in the control GUI.
+
+    Reads the scalar time series Stable-Baselines3 writes to the local
+    TensorBoard event files (via :mod:`tb_reader`) and plots a selected metric
+    on a native Tk canvas — no ``matplotlib`` or ``tensorboard`` dependency. A
+    background timer re-reads the active run every few seconds so curves grow
+    in near-real-time during training; an *Open in W&B* button hands the
+    recorded run URL to the system browser for the full online dashboard.
+    """
+
+    def __init__(self, parent, base_dir, generation="gen2",
+                 wandb_project_getter=None):
+        super().__init__(parent, padding=6)
+        self.base_dir   = base_dir
+        self.generation = generation
+        self._wandb_project_getter = wandb_project_getter
+        self._poll_job  = None
+        self._auto      = tk.BooleanVar(value=True)
+
+        self._build()
+        self.refresh_run_list()
+        self._schedule_poll()
+
+    # ── layout ────────────────────────────────────────────────────────────────
+    def _build(self):
+        top = ttk.Frame(self)
+        top.pack(fill="x")
+
+        ttk.Label(top, text="Run:").pack(side="left")
+        self.run_var = tk.StringVar()
+        self.run_combo = ttk.Combobox(top, textvariable=self.run_var,
+                                      state="readonly", width=30)
+        self.run_combo.pack(side="left", padx=4)
+        self.run_combo.bind("<<ComboboxSelected>>", lambda e: self.redraw())
+
+        ttk.Button(top, text="↻", width=3,
+                   command=self.refresh_run_list).pack(side="left")
+        ttk.Checkbutton(top, text="Auto-refresh", variable=self._auto
+                        ).pack(side="left", padx=8)
+        _backend = ("TensorBoard" if _mr_backend_name() == "tensorboard"
+                    else "builtin reader")
+        ttk.Label(top, text=f"reader: {_backend}",
+                  foreground=SUBTEXT).pack(side="left", padx=4)
+        ttk.Button(top, text="Open in W&B",
+                   command=self._open_wandb).pack(side="right")
+
+        ttk.Label(top, textvariable=self._make_metric_summary_var(),
+                  foreground=SUBTEXT).pack(side="right", padx=10)
+
+        # metric selector
+        sel = ttk.Frame(self)
+        sel.pack(fill="x", pady=(4, 2))
+        ttk.Label(sel, text="Metric:").pack(side="left")
+        self.metric_var = tk.StringVar(value=TRACKED[0][0])
+        self.metric_combo = ttk.Combobox(
+            sel, state="readonly", width=28,
+            values=[label for _, label in TRACKED],
+            textvariable=tk.StringVar(value=TRACKED[0][1]))
+        self.metric_combo.current(0)
+        self.metric_combo.pack(side="left", padx=4)
+        self.metric_combo.bind("<<ComboboxSelected>>", lambda e: self.redraw())
+
+        self.status = tk.StringVar(value="No run selected.")
+        ttk.Label(sel, textvariable=self.status,
+                  foreground=SUBTEXT).pack(side="left", padx=10)
+
+        self.canvas = tk.Canvas(self, bg=PLOT_BG, highlightthickness=0, height=360)
+        self.canvas.pack(fill="both", expand=True, pady=(2, 0))
+        self.canvas.bind("<Configure>", lambda e: self.redraw())
+
+        # latest-values strip
+        self.values = tk.StringVar(value="")
+        ttk.Label(self, textvariable=self.values, foreground=TEXT,
+                  font=("Menlo", 9)).pack(anchor="w", pady=(4, 0))
+
+    def _make_metric_summary_var(self):
+        self._summary_var = tk.StringVar(value="")
+        return self._summary_var
+
+    # ── run discovery ───────────────────────────────────────────────────────
+    def _logs_dir(self):
+        return os.path.join(self.base_dir, "logs")
+
+    def refresh_run_list(self):
+        logs = self._logs_dir()
+        runs = []
+        if os.path.isdir(logs):
+            for name in sorted(os.listdir(logs)):
+                full = os.path.join(logs, name)
+                if os.path.isdir(full) and _mr_latest_event_file(full):
+                    runs.append(name)
+        self.run_combo["values"] = runs
+        if runs and self.run_var.get() not in runs:
+            # default to the most-recently-modified run
+            newest = max(runs, key=lambda r: os.path.getmtime(
+                _mr_latest_event_file(os.path.join(logs, r))))
+            self.run_var.set(newest)
+        elif not runs:
+            self.run_var.set("")
+        self.redraw()
+
+    def current_run_dir(self):
+        name = self.run_var.get()
+        if not name:
+            return None
+        return os.path.join(self._logs_dir(), name)
+
+    # ── polling ───────────────────────────────────────────────────────────────
+    def _schedule_poll(self):
+        self._poll_job = self.after(3000, self._poll)
+
+    def _poll(self):
+        if self._auto.get():
+            # cheap: only re-list occasionally, always redraw the active run
+            self.redraw()
+        self._schedule_poll()
+
+    def stop(self):
+        if self._poll_job:
+            self.after_cancel(self._poll_job)
+            self._poll_job = None
+
+    # ── drawing ───────────────────────────────────────────────────────────────
+    def _selected_tag(self):
+        idx = self.metric_combo.current()
+        if idx < 0:
+            idx = 0
+        return TRACKED[idx][0], TRACKED[idx][1]
+
+    def redraw(self):
+        r"""Redraw the selected metric's curve on the canvas.
+
+        Reads the active run's scalars, takes the selected series
+        :math:`\{(s_i, x_i)\}` (step, value), and maps data coordinates to
+        pixel coordinates by an affine fit to the padded plot rectangle:
+
+        .. math::
+
+            X(s) &= p_\ell + \frac{s - s_{\min}}{s_{\max}-s_{\min}}\,w \\
+            Y(x) &= p_t + \Bigl(1 - \frac{x - x_{\min}}{x_{\max}-x_{\min}}\Bigr) h
+
+        (the :math:`Y` axis is inverted because canvas :math:`y` grows
+        downward). The value range is padded by 8% so the curve never touches
+        the frame, and degenerate ranges (:math:`s_{\max}=s_{\min}`) are nudged
+        to avoid division by zero. Called on a timer while training runs, so
+        the plot grows live.
+        """
+        c = self.canvas
+        c.delete("all")
+        run_dir = self.current_run_dir()
+        if not run_dir:
+            self.status.set("No runs found in logs/. Train something first.")
+            self.values.set("")
+            return
+
+        series = _mr_read_run(run_dir)
+        tag, label = self._selected_tag()
+        pts = series.get(tag, [])
+
+        W = c.winfo_width() or 600
+        H = c.winfo_height() or 360
+        pad_l, pad_r, pad_t, pad_b = 64, 16, 24, 36
+        plot_w = max(1, W - pad_l - pad_r)
+        plot_h = max(1, H - pad_t - pad_b)
+
+        # title
+        c.create_text(pad_l, 12, anchor="w", text=label, fill=TEXT,
+                      font=("", 11, "bold"))
+
+        if not pts:
+            c.create_text(W // 2, H // 2,
+                          text=f"No '{tag}' data yet in this run.",
+                          fill=SUBTEXT)
+            self._update_values(series)
+            self.status.set(f"{len(series)} metrics tracked in this run.")
+            return
+
+        xs = [p[0] for p in pts]
+        ys = [p[2] for p in pts]
+        xmin, xmax = min(xs), max(xs)
+        ymin, ymax = min(ys), max(ys)
+        if xmax == xmin:
+            xmax = xmin + 1
+        if ymax == ymin:
+            ymax = ymin + 1
+        yr = ymax - ymin
+        ymin -= yr * 0.08
+        ymax += yr * 0.08
+
+        def sx(x): return pad_l + (x - xmin) / (xmax - xmin) * plot_w
+        def sy(y): return pad_t + (1 - (y - ymin) / (ymax - ymin)) * plot_h
+
+        # gridlines + y labels
+        for k in range(5):
+            gy = pad_t + plot_h * k / 4
+            c.create_line(pad_l, gy, W - pad_r, gy, fill=GRID)
+            val = ymax - (ymax - ymin) * k / 4
+            c.create_text(pad_l - 6, gy, anchor="e",
+                          text=f"{val:.3g}", fill=SUBTEXT, font=("Menlo", 8))
+        # x labels
+        for k in range(5):
+            gx = pad_l + plot_w * k / 4
+            xv = xmin + (xmax - xmin) * k / 4
+            c.create_text(gx, H - pad_b + 14, anchor="n",
+                          text=f"{int(xv):,}", fill=SUBTEXT, font=("Menlo", 8))
+        c.create_line(pad_l, pad_t, pad_l, pad_t + plot_h, fill=AXIS)
+        c.create_line(pad_l, pad_t + plot_h, W - pad_r, pad_t + plot_h, fill=AXIS)
+        c.create_text((pad_l + W) // 2, H - 6, text="timestep",
+                      fill=SUBTEXT, font=("Menlo", 8))
+
+        # the curve
+        coords = []
+        for x, y in zip(xs, ys):
+            coords += [sx(x), sy(y)]
+        if len(coords) >= 4:
+            c.create_line(*coords, fill=LINE, width=2, smooth=True)
+        # last point marker
+        lx, ly = sx(xs[-1]), sy(ys[-1])
+        c.create_oval(lx - 3, ly - 3, lx + 3, ly + 3, fill=LINE, outline="")
+        c.create_text(lx, ly - 10, text=f"{ys[-1]:.3g}", fill=TEXT,
+                      font=("Menlo", 8))
+
+        self.status.set(f"{len(pts)} points · step {xs[-1]:,}")
+        self._update_values(series)
+
+    def _update_values(self, series):
+        """Show a compact strip of the latest value of every key metric."""
+        bits = []
+        for tag, label in TRACKED:
+            pts = series.get(tag)
+            if pts:
+                short = label.split(" (")[0]
+                bits.append(f"{short}: {pts[-1][2]:.3g}")
+        self.values.set("   ".join(bits))
+
+    # ── W&B ────────────────────────────────────────────────────────────────────
+    def _open_wandb(self):
+        """Open the exact W&B run if training recorded its URL, else the
+        project page. The run URL is written to logs/<run>/wandb_url.txt by
+        the training scripts when wandb is enabled."""
+        run_dir = self.current_run_dir()
+        if run_dir:
+            url_file = os.path.join(run_dir, "wandb_url.txt")
+            if os.path.exists(url_file):
+                try:
+                    with open(url_file) as f:
+                        url = f.read().strip()
+                    if url:
+                        webbrowser.open(url)
+                        return
+                except OSError:
+                    pass
+        # Fallback: the project's run list (newest run is what they want).
+        project = "rally-racing"
+        if self._wandb_project_getter:
+            try:
+                project = self._wandb_project_getter() or project
+            except Exception:
+                pass
+        self.status.set("No recorded run URL — opening W&B search. "
+                        "Train with wandb enabled to capture the exact run.")
+        webbrowser.open(f"https://wandb.ai/search?q={project}")
+
+
+
 class Stage:
     r"""One runnable pipeline stage (a single CLI script the GUI can launch).
 
@@ -351,7 +691,6 @@ class ControlApp:
     def _build_metrics_tab(self, parent):
         # Lazy import so the GUI still launches if metrics_panel's deps shift.
         try:
-            from metrics_panel import MetricsPanel
             self.metrics = MetricsPanel(
                 parent, BASE_DIR,
                 generation="gen2",

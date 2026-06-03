@@ -108,10 +108,16 @@ def _parse_summary_value(buf):
             ln, i = _read_varint(buf, i)
             tag = buf[i:i + ln].decode("utf-8", "replace")
             i += ln
-        elif field == 2 and wt == 2:        # node_name (skip)
+        elif field == 2 and wt == 2:        # node_name (string) — skip
             ln, i = _read_varint(buf, i)
             i += ln
-        elif field == 3 and wt == 5:        # simple_value (float32, legacy)
+        elif field == 2 and wt == 5:        # simple_value as observed in some
+            # TensorBoard builds, which serialise the scalar float at field 2
+            # (wire type 5 / 32-bit) rather than the canonical field 3. Accept
+            # both so real logs are read regardless of the writer's numbering.
+            value = struct.unpack("<f", buf[i:i + 4])[0]
+            i += 4
+        elif field == 3 and wt == 5:        # simple_value (float32, spec)
             value = struct.unpack("<f", buf[i:i + 4])[0]
             i += 4
         elif field == 8 and wt == 2:        # tensor (TensorProto, modern)
