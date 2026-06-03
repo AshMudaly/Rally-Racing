@@ -117,6 +117,73 @@ def _mr_read_run(run_dir):
     return tb_reader.read_run(run_dir)
 
 
+def _mr_read_event_file(path):
+    """Read scalars from a single event file (flat-layout entry point)."""
+    if _HAVE_TB:
+        try:
+            acc = _EventAccumulator(path, size_guidance={"scalars": 0})
+            acc.Reload()
+            series = {}
+            for tag in acc.Tags().get("scalars", []):
+                series[tag] = [(p.step, p.wall_time, p.value)
+                               for p in acc.Scalars(tag)]
+            if series:
+                return series
+        except Exception:
+            pass
+    return tb_reader.read_scalars(path)
+
+
+def _mr_discover_runs(logs_dir):
+    r"""Map run-name -> newest event file path, across both layouts.
+
+    Flat layout (current): event files sit directly in logs/ as
+    ``events.out.tfevents.<time>.<host>.<pid>.<run_name>`` — the run name is the
+    suffix after the pid. Legacy layout (older runs): events live in a per-run
+    subdirectory ``logs/<run_name>/.../events...``. Both are merged so the panel
+    lists every run regardless of when it was trained; when a name exists in
+    both, the most-recently-modified event file wins.
+    """
+    runs = {}  # name -> (mtime, path)
+    if not os.path.isdir(logs_dir):
+        return {}
+
+    # Flat event files directly in logs/.
+    for name in os.listdir(logs_dir):
+        full = os.path.join(logs_dir, name)
+        if not os.path.isfile(full) or "tfevents" not in name:
+            continue
+        # events.out.tfevents.<time>.<host>.<pid>[.<run_name>]
+        run = "unnamed"
+        parts = name.split("tfevents.", 1)
+        if len(parts) == 2:
+            tail = parts[1].split(".")
+            if len(tail) > 3:           # [time, host, pid, <run_name...>]
+                run = ".".join(tail[3:])
+        try:
+            mt = os.path.getmtime(full)
+        except OSError:
+            continue
+        if run not in runs or mt > runs[run][0]:
+            runs[run] = (mt, full)
+
+    # Legacy per-run subdirectories.
+    for name in os.listdir(logs_dir):
+        full = os.path.join(logs_dir, name)
+        if not os.path.isdir(full):
+            continue
+        ev = tb_reader.latest_event_file(full)
+        if ev:
+            try:
+                mt = os.path.getmtime(ev)
+            except OSError:
+                continue
+            if name not in runs or mt > runs[name][0]:
+                runs[name] = (mt, ev)
+
+    return {k: v[1] for k, v in runs.items()}
+
+
 TRACKED = [
     # Tags verified against real SB3 output. Episode stats live under eval/*
     # (logged by EvalCallback); rollout/* may be absent depending on setup, so
@@ -229,27 +296,24 @@ class MetricsPanel(ttk.Frame):
 
     def refresh_run_list(self):
         logs = self._logs_dir()
-        runs = []
-        if os.path.isdir(logs):
-            for name in sorted(os.listdir(logs)):
-                full = os.path.join(logs, name)
-                if os.path.isdir(full) and _mr_latest_event_file(full):
-                    runs.append(name)
+        # name -> event file path, across flat and legacy layouts.
+        self._run_map = _mr_discover_runs(logs)
+        runs = sorted(self._run_map.keys())
         self.run_combo["values"] = runs
         if runs and self.run_var.get() not in runs:
             # default to the most-recently-modified run
-            newest = max(runs, key=lambda r: os.path.getmtime(
-                _mr_latest_event_file(os.path.join(logs, r))))
+            newest = max(runs, key=lambda r: os.path.getmtime(self._run_map[r]))
             self.run_var.set(newest)
         elif not runs:
             self.run_var.set("")
         self.redraw()
 
-    def current_run_dir(self):
+    def current_event_file(self):
+        """Resolve the selected run name to its event file path."""
         name = self.run_var.get()
-        if not name:
+        if not name or not getattr(self, "_run_map", None):
             return None
-        return os.path.join(self._logs_dir(), name)
+        return self._run_map.get(name)
 
     # ── polling ───────────────────────────────────────────────────────────────
     def _schedule_poll(self):
@@ -293,13 +357,13 @@ class MetricsPanel(ttk.Frame):
         """
         c = self.canvas
         c.delete("all")
-        run_dir = self.current_run_dir()
-        if not run_dir:
+        ev = self.current_event_file()
+        if not ev:
             self.status.set("No runs found in logs/. Train something first.")
             self.values.set("")
             return
 
-        series = _mr_read_run(run_dir)
+        series = _mr_read_event_file(ev)
         tag, label = self._selected_tag()
         pts = series.get(tag, [])
 
@@ -382,20 +446,23 @@ class MetricsPanel(ttk.Frame):
     # ── W&B ────────────────────────────────────────────────────────────────────
     def _open_wandb(self):
         """Open the exact W&B run if training recorded its URL, else the
-        project page. The run URL is written to logs/<run>/wandb_url.txt by
-        the training scripts when wandb is enabled."""
-        run_dir = self.current_run_dir()
-        if run_dir:
-            url_file = os.path.join(run_dir, "wandb_url.txt")
-            if os.path.exists(url_file):
-                try:
-                    with open(url_file) as f:
-                        url = f.read().strip()
-                    if url:
-                        webbrowser.open(url)
-                        return
-                except OSError:
-                    pass
+        project page. The training scripts write the URL to
+        logs/<run_name>_wandb_url.txt (flat layout); older runs may have it at
+        logs/<run_name>/wandb_url.txt."""
+        name = self.run_var.get()
+        if name:
+            logs = self._logs_dir()
+            for url_file in (os.path.join(logs, f"{name}_wandb_url.txt"),
+                             os.path.join(logs, name, "wandb_url.txt")):
+                if os.path.exists(url_file):
+                    try:
+                        with open(url_file) as f:
+                            url = f.read().strip()
+                        if url:
+                            webbrowser.open(url)
+                            return
+                    except OSError:
+                        pass
         # Fallback: the project's run list (newest run is what they want).
         project = "rally-racing"
         if self._wandb_project_getter:

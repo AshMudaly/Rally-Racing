@@ -99,23 +99,23 @@ def make_train_env(scenario, n_envs):
     return SubprocVecEnv([factory for _ in range(n_envs)], start_method="spawn")
 
 
-def make_eval_env(scenario, log_dir):
+def make_eval_env(scenario, aux_dir):
     def factory():
         env = gym.make("RallyDriving-v0",
                        renders=False, isDiscrete=False,
                        reward_callback=custom_reward,
                        observation_callback=None,
                        scenario=scenario)
-        return Monitor(env, log_dir)
+        return Monitor(env, aux_dir)
     return DummyVecEnv([factory])
 
 
-def make_callbacks(eval_env, best_dir, log_dir, use_wandb, n_envs):
+def make_callbacks(eval_env, best_dir, aux_dir, use_wandb, n_envs):
     callbacks = [
         EvalCallback(
             eval_env,
             best_model_save_path=best_dir,
-            log_path=log_dir,
+            log_path=aux_dir,
             eval_freq=20_000 // n_envs,
             n_eval_episodes=10,
             deterministic=True,
@@ -134,9 +134,12 @@ def main():
     model_dir = os.path.join(BASE_DIR, f"{GENERATION}_models",
                              args.scenario, "privileged")
     best_dir  = os.path.join(model_dir, "best")
-    log_dir   = os.path.join(BASE_DIR, "logs",
-                             f"{GENERATION}_{args.scenario}_privileged")
-    for d in (model_dir, best_dir, log_dir):
+    # Flat log layout: events write directly into logs/ with the run name in the
+    # filename; aux files (eval npz, monitor csv) get a per-run subfolder.
+    log_dir   = os.path.join(BASE_DIR, "logs")
+    run_name  = f"{GENERATION}_{args.scenario}_privileged"
+    aux_dir   = os.path.join(log_dir, f"{run_name}_eval")
+    for d in (model_dir, best_dir, log_dir, aux_dir):
         os.makedirs(d, exist_ok=True)
 
     print("=" * 60)
@@ -150,20 +153,37 @@ def main():
 
     run = None
     if use_wandb:
-        run = wandb.init(
-            project=WANDB_PROJECT,
-            name=f"{GENERATION}_{args.scenario}_privileged",
-            config={"scenario": args.scenario,
-                    "generation": GENERATION,
-                    "total_timesteps": args.timesteps,
-                    "n_envs": args.n_envs,
-                    **PPO_KWARGS},
-            sync_tensorboard=True,
-            save_code=True,
-        )
+        try:
+            run = wandb.init(
+                project=WANDB_PROJECT,
+                name=f"{GENERATION}_{args.scenario}_privileged",
+                config={"scenario": args.scenario,
+                        "generation": GENERATION,
+                        "total_timesteps": args.timesteps,
+                        "n_envs": args.n_envs,
+                        **PPO_KWARGS},
+                sync_tensorboard=True,
+                save_code=True,
+            )
+            # Record the live run URL so the GUI's "Open in W&B" button can jump
+            # to this exact run. Named per run so it doesn't clobber others.
+            try:
+                with open(os.path.join(log_dir, f"{run_name}_wandb_url.txt"), "w") as _f:
+                    _f.write(run.url)
+            except Exception:
+                pass
+        except Exception as e:
+            # Most commonly a missing API key (run `wandb login`). Don't let
+            # logging take down training — fall back to local TensorBoard logs,
+            # which the GUI's Training Metrics tab reads regardless.
+            print(f"\n[wandb] disabled for this run: {e}")
+            print("[wandb] continuing with local TensorBoard logging only. "
+                  "Run `wandb login` to enable online logging.\n")
+            use_wandb = False
+            run = None
 
     env = make_train_env(args.scenario, args.n_envs)
-    eval_env = make_eval_env(args.scenario, log_dir)
+    eval_env = make_eval_env(args.scenario, aux_dir)
 
     warm = warm_start_path(args.scenario)
     if args.fresh or warm is None or not os.path.exists(warm):
@@ -171,19 +191,31 @@ def main():
             print(f"Warm-start file {warm} not found — training from scratch.")
         else:
             print("Training from scratch.")
-        model = PPO("MlpPolicy", env,
-                    tensorboard_log=log_dir, verbose=1, **PPO_KWARGS)
+        # No tensorboard_log here — that would create a PPO_N subdirectory.
+        # A flat, run-named logger is attached below instead.
+        model = PPO("MlpPolicy", env, verbose=1, **PPO_KWARGS)
     else:
         print(f"Warm-starting from {warm}")
         model = PPO.load(warm, env=env, device=PPO_KWARGS["device"])
 
-    if run is not None:
-        from stable_baselines3.common.logger import configure
-        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
+    # Flat TensorBoard logging: write event files directly into logs/ with the
+    # run name embedded in the filename instead of a per-run PPO_N subdirectory.
+    # A single writer for every run type also avoids the duplicate-writer
+    # conflict from combining tensorboard_log with set_logger.
+    from stable_baselines3.common.logger import (
+        Logger, HumanOutputFormat, TensorBoardOutputFormat)
+    from torch.utils.tensorboard import SummaryWriter
+    _tb_fmt = TensorBoardOutputFormat.__new__(TensorBoardOutputFormat)
+    _tb_fmt.writer = SummaryWriter(log_dir=log_dir, filename_suffix=f".{run_name}")
+    _tb_fmt._is_closed = False
+    model.set_logger(Logger(
+        folder=log_dir,
+        output_formats=[HumanOutputFormat(sys.stdout), _tb_fmt],
+    ))
 
     print(f"\nModel: {model.policy}\n")
 
-    callbacks = make_callbacks(eval_env, best_dir, log_dir, use_wandb, args.n_envs)
+    callbacks = make_callbacks(eval_env, best_dir, aux_dir, use_wandb, args.n_envs)
     try:
         try:
             model.learn(total_timesteps=args.timesteps,

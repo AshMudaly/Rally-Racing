@@ -44,15 +44,20 @@ from vision import ObstacleCNN
 
 # ── Constants ─────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
-GENERATION    = "gen2"           # bump when starting a new generation
+GENERATION    = "gen6"           # bump when starting a new generation
 WANDB_PROJECT = "rally-racing"
 CNN_PATH      = os.path.join(BASE_DIR, "vision", "cnn_obstacle.pt")
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    # Aligned with train.py's circuit curriculum. Vision fine-tuning is only
+    # meaningful on scenarios that contain obstacles (the CNN detects obstacles);
+    # if a given circuit has none, the CNN channels are simply inactive. Adjust
+    # this list if your env defines a different obstacle-bearing subset.
     parser.add_argument("--scenario", required=True,
-                        choices=["phase2", "phase3", "custom"])
+                        choices=["circuit_easy", "circuit_medium",
+                                 "circuit_hard", "circuit_difficult"])
     parser.add_argument("--timesteps", type=int, default=100_000)
     parser.add_argument("--n-envs", type=int, default=8)
     parser.add_argument("--no-wandb", action="store_true")
@@ -74,7 +79,7 @@ def load_cnn():
     return model
 
 
-def make_env(cnn, scenario, log_dir):
+def make_env(cnn, scenario, aux_dir):
     def factory():
         env = gym.make(
             "VisionRallyDriving-v0",
@@ -86,7 +91,7 @@ def make_env(cnn, scenario, log_dir):
             vision_model=cnn,
             vis_threshold=0.5,
         )
-        return Monitor(env, log_dir)
+        return Monitor(env, aux_dir)
     return factory
 
 
@@ -97,9 +102,12 @@ def main():
     save_dir = os.path.join(BASE_DIR, f"{GENERATION}_models",
                             args.scenario, "vision")
     best_dir = os.path.join(save_dir, "best")
-    log_dir  = os.path.join(BASE_DIR, "logs",
-                            f"{GENERATION}_{args.scenario}_vision")
-    for d in (save_dir, best_dir, log_dir):
+    # Flat log layout (matches train.py): events in logs/ with run name in the
+    # filename; aux files (eval npz, monitor csv) in a per-run subfolder.
+    log_dir  = os.path.join(BASE_DIR, "logs")
+    run_name = f"{GENERATION}_{args.scenario}_vision"
+    aux_dir  = os.path.join(log_dir, f"{run_name}_eval")
+    for d in (save_dir, best_dir, log_dir, aux_dir):
         os.makedirs(d, exist_ok=True)
 
     warm = warm_start_path(args.scenario)
@@ -121,39 +129,58 @@ def main():
     run = None
     if use_wandb:
         import wandb
-        run = wandb.init(
-            project=WANDB_PROJECT,
-            name=f"{GENERATION}_{args.scenario}_vision",
-            config={"scenario": args.scenario,
-                    "generation": GENERATION,
-                    "total_timesteps": args.timesteps,
-                    "n_envs": args.n_envs,
-                    "warm_start": warm},
-            sync_tensorboard=True,
-            save_code=True,
-        )
+        try:
+            run = wandb.init(
+                project=WANDB_PROJECT,
+                name=f"{GENERATION}_{args.scenario}_vision",
+                config={"scenario": args.scenario,
+                        "generation": GENERATION,
+                        "total_timesteps": args.timesteps,
+                        "n_envs": args.n_envs,
+                        "warm_start": warm},
+                sync_tensorboard=True,
+                save_code=True,
+            )
+            try:
+                with open(os.path.join(log_dir, f"{run_name}_wandb_url.txt"), "w") as _f:
+                    _f.write(run.url)
+            except Exception:
+                pass
+        except Exception as e:
+            print(f"\n[wandb] disabled for this run: {e}")
+            print("[wandb] continuing with local TensorBoard logging only. "
+                  "Run `wandb login` to enable online logging.\n")
+            use_wandb = False
+            run = None
 
     cnn = load_cnn()
 
     train_env = DummyVecEnv(
-        [make_env(cnn, args.scenario, log_dir) for _ in range(args.n_envs)]
+        [make_env(cnn, args.scenario, aux_dir) for _ in range(args.n_envs)]
     )
-    eval_env = DummyVecEnv([make_env(cnn, args.scenario, log_dir)])
+    eval_env = DummyVecEnv([make_env(cnn, args.scenario, aux_dir)])
 
     print(f"Warm-starting from {warm}")
     model = PPO.load(warm, env=train_env, device="cpu")
 
-    if run is not None:
-        from stable_baselines3.common.logger import configure
-        model.set_logger(configure(log_dir, ["stdout", "tensorboard"]))
-    else:
-        model.tensorboard_log = log_dir
+    # Flat TensorBoard logging with the run name in the event filename, single
+    # writer for every run (see train.py for rationale).
+    from stable_baselines3.common.logger import (
+        Logger, HumanOutputFormat, TensorBoardOutputFormat)
+    from torch.utils.tensorboard import SummaryWriter
+    _tb_fmt = TensorBoardOutputFormat.__new__(TensorBoardOutputFormat)
+    _tb_fmt.writer = SummaryWriter(log_dir=log_dir, filename_suffix=f".{run_name}")
+    _tb_fmt._is_closed = False
+    model.set_logger(Logger(
+        folder=log_dir,
+        output_formats=[HumanOutputFormat(sys.stdout), _tb_fmt],
+    ))
 
     callbacks = [
         EvalCallback(
             eval_env,
             best_model_save_path=best_dir,
-            log_path=log_dir,
+            log_path=aux_dir,
             eval_freq=5_000 // args.n_envs,
             n_eval_episodes=10,
             deterministic=True,
