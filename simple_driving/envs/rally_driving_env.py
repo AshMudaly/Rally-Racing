@@ -82,15 +82,15 @@ class RallyDrivingEnv(SimpleDrivingEnv):
     CIRCUIT_RAMP_POSITIONS = [
         (10, -14, math.radians(180)),
         (-2, -14, math.radians(180)),
-        (-4, -14, math.radians(0)),
+        (-5, -14, math.radians(0)),
         (15,  2, math.radians(270)),
     ]
     CIRCUIT_HARD_OBSTACLE_COUNT = 4
 
     # ── Tunables ───────────────────────────────────────────────────────
     CHECKPOINT_RADIUS         = 1.5
-    OBSTACLE_SPAWN_JITTER     = 1.5    # per-reset spawn radius around home
-    OBSTACLE_COLLISION_RADIUS = 0.7
+    OBSTACLE_SPAWN_JITTER     = 0.5    # per-reset spawn radius around home
+    OBSTACLE_COLLISION_RADIUS = 0.8
 
     # ── Ramp-taken detection ──────────────────────────────────────────
     RAMP_TAKEN_RADIUS  = 1.5     # car must be within this many metres of ramp centre
@@ -379,7 +379,7 @@ class RallyDrivingEnv(SimpleDrivingEnv):
                 continue
             if math.hypot(car_pos[0] - rx, car_pos[1] - ry) < self.RAMP_TAKEN_RADIUS:
                 self.ramps_taken.add(i)
-                print(f"RAMP {i} TAKEN at pitch={pitch:.2f}, pos=({car_pos[0]:.1f},{car_pos[1]:.1f})")
+                #print(f"RAMP {i} TAKEN at pitch={pitch:.2f}, pos=({car_pos[0]:.1f},{car_pos[1]:.1f})")
                 return i
         return None
 
