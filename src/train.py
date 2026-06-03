@@ -71,7 +71,7 @@ WARM_START_CHAIN = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scenario", required=True, choices=SCENARIOS)
-    parser.add_argument("--timesteps", type=int, default=800_000)
+    parser.add_argument("--timesteps", type=int, default=500_000)
     parser.add_argument("--n-envs", type=int, default=8)
     parser.add_argument("--no-wandb", action="store_true")
     parser.add_argument("--fresh", action="store_true",

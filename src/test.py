@@ -26,7 +26,7 @@ from stable_baselines3 import PPO
 from reward import custom_reward
 
 BASE_DIR    = os.path.abspath(os.path.join(HERE, ".."))
-GENERATION  = "gen5"
+GENERATION  = "gen6"
 SCENARIOS   = ["circuit_easy", "circuit_medium",
                "circuit_hard", "circuit_difficult"]
 
