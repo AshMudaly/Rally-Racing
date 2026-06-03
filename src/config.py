@@ -27,7 +27,7 @@ DEFAULTS = {
     # ── State-RL training (train.py) ──
     "total_timesteps": 300_000,
     "n_envs":          8,
-    "scenario":        "phase3",      # phase1 / phase2 / phase3
+    "scenario":        "circuit_easy",  # circuit_easy / _medium / _hard / _difficult
     "load_previous":   True,
     "reset_timesteps": True,
     "use_wandb":       True,

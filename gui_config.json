@@ -1,7 +1,7 @@
 {
   "total_timesteps": 300000,
   "n_envs": 16,
-  "scenario": "phase1",
+  "scenario": "circuit_easy",
   "load_previous": true,
   "reset_timesteps": true,
   "use_wandb": false,
@@ -38,9 +38,9 @@
   "cnn_lr": 0.001,
   "vision_timesteps": 100000,
   "test_scenarios": [
-    "phase1"
+    "circuit_easy"
   ],
-  "test_episodes": 3,
+  "test_episodes": 1,
   "render": true,
   "test_model": "/home/alec/Git/Rally-Racing/gen3_models/custom_easy/privileged/ppo_rally_final.zip"
 }

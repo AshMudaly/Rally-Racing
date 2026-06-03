@@ -589,7 +589,8 @@ class ControlApp:
     metrics tab and a button to open the HTML system guide.
     """
 
-    SCENARIOS = ["phase1", "phase2", "phase3"]
+    SCENARIOS = ["circuit_easy", "circuit_medium",
+                 "circuit_hard", "circuit_difficult"]
 
     def __init__(self, root):
         self.root = root
@@ -645,7 +646,7 @@ class ControlApp:
         self._section(train_tab, "Core training metrics")
         self._int_field(train_tab,  "total_timesteps", "Total timesteps")
         self._int_field(train_tab,  "n_envs",          "Parallel envs (N_ENVS)")
-        self._choice_field(train_tab, "scenario",      "Scenario / phase", self.SCENARIOS)
+        self._choice_field(train_tab, "scenario",      "Scenario", self.SCENARIOS)
         self._bool_field(train_tab, "load_previous",   "Resume from resume.zip")
         self._bool_field(train_tab, "reset_timesteps", "Reset timestep counter")
         self._bool_field(train_tab, "use_wandb",       "Log to Weights & Biases")
@@ -847,7 +848,8 @@ class ControlApp:
     # Non-config GUI-only fields (eval + vision CLI args) carry their own
     # defaults; they are stored in gui_config.json too so they persist.
     GUI_ONLY_DEFAULTS = {
-        "test_scenarios":   ["phase1", "phase2", "phase3"],
+        "test_scenarios":   ["circuit_easy", "circuit_medium",
+                             "circuit_hard", "circuit_difficult"],
         "test_episodes":    1,
         "render":           True,
         "test_model":       os.path.join(BASE_DIR, "models", "best", "best_model.zip"),
@@ -862,6 +864,15 @@ class ControlApp:
     def _load_into_widgets(self, cfg):
         merged = dict(self.GUI_ONLY_DEFAULTS)
         merged.update(cfg)
+        # Sanitize the scenario: a config saved under an older curriculum (e.g.
+        # "phase1") would leave the readonly dropdown blank and pass an invalid
+        # value to train.py. Fall back to the first valid scenario instead.
+        if merged.get("scenario") not in self.SCENARIOS:
+            merged["scenario"] = self.SCENARIOS[0]
+        # Same for the multi-select evaluation scenarios.
+        valid_eval = [s for s in (merged.get("test_scenarios") or [])
+                      if s in self.SCENARIOS]
+        merged["test_scenarios"] = valid_eval or [self.SCENARIOS[0]]
         for name, (kind, var) in self._tk_vars.items():
             val = merged.get(name, self.GUI_ONLY_DEFAULTS.get(name))
             if kind == "multi":
@@ -912,7 +923,7 @@ class ControlApp:
         """Settings dict used by stage builders (includes GUI-only fields)."""
         cfg = self._collect_from_widgets()
         if not cfg.get("test_scenarios"):
-            cfg["test_scenarios"] = ["phase1"]
+            cfg["test_scenarios"] = ["circuit_easy"]
         return cfg
 
     # ── system guide ────────────────────────────────────────────────────────
