@@ -34,7 +34,7 @@ The control panel (`src/control.py`) is a single Tkinter window — pure Python 
 
 ### Single use operation (control.py)
 
-For single time users, it is recomended to operate the GUI control panel directly through python. this can be accomplished after installation. To use this as such, either run the ```bash control.py``` script through VSC or depending on virtual environment use;
+For single time users, it is recomended to operate the GUI control panel directly through python. this can be accomplished after installation. To use this as such, either run the ```control.py``` script through VSC or depending on virtual environment use;
 
 ```bash
 /path/to/venv/bin/python3 src/control.py
@@ -44,7 +44,7 @@ Or
 ```bash
 python3 src/control.py
 ```
-From the Ralley-Racing Root driectory.
+From the Ralley-Racing Root directory.
 
 ### First-time app setup (.desktop installation)
 
@@ -78,11 +78,11 @@ This is the one value the launcher cannot guess, so it must be set before anythi
 
 > **Note on the `.desktop` files.** The `Rally-Racing.desktop` file in the project folder is a *template* — it keeps `/ABSOLUTE/PATH/TO/...` placeholders on purpose and is **not** the file you launch. Double-clicking the template opens a text editor, which is expected. The file you actually launch is the installed copy that `install_desktop.sh` writes into your applications menu.
 
-### Launching the GUI
+### Launching the app based GUI
 
 After setup, launch in any of these ways:
 
-- **From the applications menu (recommended):** press the **Super** key, type "Rally", and open *Rally-Racing Control Panel*. The menu entry needs no extra permissions, so this is the most reliable method.
+- **From the applications menu:** press the **Super** key, type "Rally", and open *Rally-Racing Control Panel*. The menu entry needs no extra permissions, so this is the most reliable method.
 - **From the Desktop icon:** double-click it. The first time, your desktop may ask you to trust it — right-click the icon and choose **Allow Launching** (GNOME), then double-click.
 - **From a terminal:**
 
